@@ -2,7 +2,7 @@ import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 
 export default defineConfig({
-  base: '/omidyar-personality-quiz-frontend/',
+  base: '/oracle.personality-quiz/',
   plugins: [react()],
   server: {
     port: 8080,

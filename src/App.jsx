@@ -8,20 +8,7 @@ import logo from "./assets/images/logo.png";
 
 import "./index.scss";
 
-function OptionButton({
-  runId,
-  currentQuestionIndex,
-  questionIndex,
-  questionText,
-  options,
-  option,
-  order,
-  responses,
-  addResponse,
-  QUESTION_SPEED,
-  ANSWER_SPEED,
-  questionId,
-}) {
+function OptionButton({ runId, currentQuestionIndex, questionIndex, questionText, options, option, order, responses, addResponse, QUESTION_SPEED, ANSWER_SPEED, questionId }) {
   const [active, setActive] = useState(false);
   const timerRef = useRef(null);
 
@@ -94,6 +81,12 @@ function OptionButton({
   );
 }
 
+const haptic = (pattern = 10) => {
+  // pattern can be a number (ms) or an array (pattern)
+  if (navigator?.vibrate) navigator.vibrate(pattern);
+};
+
+
 const App = () => {
   const [runId, setRunId] = useState(0);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(-1);
@@ -137,6 +130,7 @@ const App = () => {
   };
 
   const addResponse = (e) => {
+    haptic(20)
     const startedAt = questionTimer.current ?? performance.now();
     const delay = Math.max(0, Math.round(performance.now() - startedAt));
     questionTimer.current = null;
