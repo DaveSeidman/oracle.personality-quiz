@@ -1,0 +1,338 @@
+/* UltraLight */
+@font-face {
+  font-family: 'Oracle Sans';
+  src: url('assets/fonts/OracleSans-UltraLight.ttf') format('truetype');
+  font-weight: 200;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Oracle Sans';
+  src: url('assets/fonts/OracleSans-UltraLightItalic.ttf') format('truetype');
+  font-weight: 200;
+  font-style: italic;
+}
+
+/* Light */
+@font-face {
+  font-family: 'Oracle Sans';
+  src: url('assets/fonts/OracleSans-Light.ttf') format('truetype');
+  font-weight: 300;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Oracle Sans';
+  src: url('assets/fonts/OracleSans-LightItalic.ttf') format('truetype');
+  font-weight: 300;
+  font-style: italic;
+}
+
+/* Regular */
+@font-face {
+  font-family: 'Oracle Sans';
+  src: url('assets/fonts/OracleSans-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Oracle Sans';
+  src: url('assets/fonts/OracleSans-Italic.ttf') format('truetype');
+  font-weight: 400;
+  font-style: italic;
+}
+
+/* SemiBold */
+@font-face {
+  font-family: 'Oracle Sans';
+  src: url('assets/fonts/OracleSans-SemiBold.ttf') format('truetype');
+  font-weight: 600;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Oracle Sans';
+  src: url('assets/fonts/OracleSans-SemiBoldItalic.ttf') format('truetype');
+  font-weight: 600;
+  font-style: italic;
+}
+
+/* Bold */
+@font-face {
+  font-family: 'Oracle Sans';
+  src: url('assets/fonts/OracleSans-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Oracle Sans';
+  src: url('assets/fonts/OracleSans-BoldItalic.ttf') format('truetype');
+  font-weight: 700;
+  font-style: italic;
+}
+
+/* ExtraBold */
+@font-face {
+  font-family: 'Oracle Sans';
+  src: url('assets/fonts/OracleSans-ExtraBold.ttf') format('truetype');
+  font-weight: 800;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Oracle Sans';
+  src: url('assets/fonts/OracleSans-ExtraBoldItalic.ttf') format('truetype');
+  font-weight: 800;
+  font-style: italic;
+}
+
+
+$white: rgb(240, 241, 242);
+$black: rgb(10, 9, 8);
+$purple: #6c266c;
+$teal: #92baa7;
+$darkgreen: #2c4d20;
+
+html,
+body,
+#root,
+.app {
+  font-size: 16px;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  width: 100%;
+  height: 100%;
+  background: black;
+}
+
+.app {
+  background: $black;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+
+  .logo {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    margin: 1vh 4vh;
+    // width: 12vh;
+    height: 12vh;
+  }
+
+  h1,
+  h2,
+  p,
+  a,
+  button,
+  label {
+    color: $white;
+    text-rendering: geometricPrecision;
+    font-weight: 100;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  button {
+    margin: 1vh;
+    background: $teal;
+    border: none;
+    border-radius: 2vh;
+    font-size: 4vh;
+    box-shadow: 0 10px 20px rgba(0, 0, 0, .3);
+    font-family: 'Oracle Sans';
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    cursor: pointer;
+  }
+
+  .background {
+    position: absolute;
+    inset: 0;
+    transition: filter 1s;
+    overflow: hidden;
+
+    &.muted {
+      filter: blur(.5vh) brightness(50%);
+    }
+
+    video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+  }
+
+  .questions {
+    position: absolute;
+    width: calc(100% - 16vh);
+    height: calc(100% - 22vh);
+    left: 0;
+    top: 0;
+    margin: 11vh 8vh;
+    overflow-y: scroll;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
+
+    &-question,
+    &-results {
+      height: 100%;
+      overflow: hidden;
+
+      &.hidden {
+        height: 0;
+      }
+    }
+
+    &-question {
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      transition: opacity .5s;
+
+      &.answered {
+        margin-bottom: 8vh;
+        pointer-events: none;
+        opacity: .5;
+      }
+
+      &.hidden {
+        height: 0;
+      }
+
+      &-text {
+        margin: 0;
+        font-family: 'Oracle Sans';
+        font-size: 5vh;
+        line-height: 7vh;
+      }
+
+      &-options {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+
+        &-option {
+          padding: 1.5vh 4vh;
+          transition: background .5s, transform 2s;
+
+          &.hidden {
+            transform: translateX(100%);
+          }
+
+          &.selected {
+            background-color: white;
+          }
+
+          &-text {
+            font-family: "Oracle Sans";
+            color: $darkgreen;
+            text-transform: none;
+            letter-spacing: 0;
+            font-size: 4vh;
+            font-weight: 500;
+            text-align: right;
+            white-space: nowrap;
+          }
+
+          & * {
+            pointer-events: none;
+          }
+
+          &:has(> span:empty) {
+            display: none;
+          }
+        }
+      }
+    }
+
+    &-results {
+      display: flex;
+      flex-direction: column;
+      justify-content: space-evenly;
+      align-items: center;
+
+      &>* {
+        margin: 0;
+      }
+
+      &-title {
+        font-family: "Oracle Sans";
+        font-size: 4vh;
+      }
+
+      &-personality {
+        font-family: "Oracle Sans";
+        font-size: 8vh;
+      }
+
+      &-description {
+        font-family: 'Oracle Sans';
+        font-size: 4vh;
+        text-align: center;
+      }
+
+      &-drink {
+        font-family: 'Oracle Sans';
+        font-size: 3vh;
+      }
+
+      &-restart {
+        padding: 2vh 4vh;
+        color: $darkgreen;
+        font-family: 'Oracle Sans';
+        font-weight: 600;
+        transition: opacity .5s, visibility .5s, filter .5s;
+
+        &.hidden {
+          filter: blur(10px);
+        }
+      }
+    }
+  }
+
+  .start {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 6vh;
+    font-weight: 600;
+    padding: 3vh 6vh;
+    transition: opacity 1s, visibility 1s, filter 1s;
+    box-shadow: 0 2vh 3vh 3vh rgba(0, 0, 0, .6);
+
+    &.hidden {
+      filter: blur(10px);
+    }
+  }
+
+  .restart {
+    width: 100%;
+    display: flex;
+    justify-content: flex-end;
+
+    button {
+      padding: 2vh 4vh;
+      text-transform: uppercase;
+      font-family: 'Oracle Sans';
+      letter-spacing: .2vh;
+    }
+  }
+
+  .hidden {
+    opacity: 0;
+    visibility: hidden;
+  }
+
+  .underline {
+    text-decoration: underline;
+    text-underline-offset: 6px;
+  }
+}

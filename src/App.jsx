@@ -1,0 +1,208 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { getBestOption, shuffle } from './utils';
+import { TypeAnimation } from 'react-type-animation';
+import questions from './assets/data/questions.json';
+import personalities from './assets/data/personalities.json'
+import backgroundVideo from './assets/videos/redwoods.mp4';
+import logo from './assets/images/logo.png';
+
+import './index.scss';
+
+const App = () => {
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(-1);
+  const [responses, setResponses] = useState([]);
+  const [personality, setPersonality] = useState({});
+  const [fullscreen, setFullscreen] = useState(false);
+
+  const questionTimer = useRef();
+  const questionsRef = useRef();
+
+  const timeoutRef = useRef();
+  const IDLE_DELAY = 45000;
+  const QUESTION_SPEED = 50;
+  const ANSWER_SPEED = 60;
+
+  const handleFullscreenChange = (e) => {
+    setFullscreen(document.fullscreenElement !== null)
+  }
+
+  const start = () => {
+    setCurrentQuestionIndex(0);
+    setResponses([]);
+    setPersonality({});
+    questions.forEach((q) => {
+      q.options = shuffle(q.options); // still shuffle their order
+    });
+
+    if (!fullscreen && location.hostname !== 'localhost') {
+      document.documentElement.webkitRequestFullScreen();
+      setFullscreen(true);
+    }
+  };
+
+  const restart = () => {
+    setCurrentQuestionIndex(-1);
+    setResponses([])
+    setPersonality({})
+  }
+
+  const addResponse = (e) => {
+    const startedAt = questionTimer.current ?? performance.now();
+    const delay = Math.max(0, Math.round(performance.now() - startedAt));
+    questionTimer.current = null;
+    const answerId = e.target.getAttribute('data-id');
+    const order = parseInt(e.target.getAttribute('data-order'));
+    const index = parseInt(e.target.getAttribute('data-index'));
+
+    setResponses((prev) => {
+      const next = [...prev];
+      next[index] = { id: answerId, order, delay };
+      return next;
+    });
+
+    setCurrentQuestionIndex((prev) => prev + 1);
+  };
+
+  const idleTimeout = () => {
+    setCurrentQuestionIndex(-1);
+    setPersonality({});
+    setResponses([])
+  };
+
+  const resetIdleTimeout = () => {
+    clearTimeout(timeoutRef.current);
+    timeoutRef.current = setTimeout(idleTimeout, IDLE_DELAY);
+  };
+
+  useEffect(() => {
+    questionTimer.current = performance.now();
+
+    if (responses.length === questions.length) {
+      const bestOption = getBestOption(responses);
+      const matchedPersonality = personalities.find(p => p.id === bestOption.id)
+      setPersonality(matchedPersonality)
+    }
+  }, [responses.length]);
+
+  useEffect(() => {
+    if (currentQuestionIndex >= 0) {
+      const questionEl = questionsRef.current?.children[currentQuestionIndex];
+      setTimeout(() => {
+        questionEl?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+      }, 500);
+    }
+  }, [currentQuestionIndex]);
+
+  useEffect(() => {
+    addEventListener('click', resetIdleTimeout);
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+
+    return () => {
+      removeEventListener('click', resetIdleTimeout);
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
+  }, []);
+
+  return (
+    <div className="app">
+      <div className={`background ${currentQuestionIndex >= 0 ? 'muted' : ''}`}>
+        <video src={backgroundVideo} muted loop autoPlay playsInline />
+      </div>
+
+      <div
+        className="questions"
+        ref={questionsRef}
+      >
+        {questions.map((question, questionIndex) => (
+          <div
+            key={question.id}
+            className={
+              `questions-question `
+              + `${questionIndex > currentQuestionIndex ? 'hidden' : ''} `
+              + `${questionIndex >= currentQuestionIndex ? '' : 'answered'}`
+            }
+          >
+            <h1 className="questions-question-text">
+              {currentQuestionIndex === questionIndex && (
+                <TypeAnimation
+                  sequence={[question.text]}
+                  speed={QUESTION_SPEED}
+                />
+              )}
+              {currentQuestionIndex > questionIndex && (<span>{question.text}</span>)}
+            </h1>
+
+            <div className="questions-question-options">
+              {question.options.map((option, order) => {
+                // Calculate base delay from question length
+                const questionDelay = (QUESTION_SPEED * question.text.length) + 500;
+
+                // Calculate cumulative delay from previous options' text lengths
+                const cumulativeDelay = question.options
+                  .slice(0, order)
+                  .reduce((acc, prevOption) => acc + prevOption.text.length * ANSWER_SPEED, 0);
+
+                // Add a short gap between options (optional, tweak if needed)
+                const interOptionDelay = order * 100;
+
+                const startDelay = questionDelay + cumulativeDelay + interOptionDelay;
+                const [active, setActive] = useState(false);
+                const timeoutRef = useRef();
+
+                useEffect(() => {
+                  if (currentQuestionIndex === questionIndex) {
+                    timeoutRef.current = setTimeout(() => {
+                      setActive(true)
+                    }, startDelay)
+                  }
+
+                  return () => {
+                    if (timeoutRef.current) clearTimeout(timeoutRef.current)
+                  }
+                }, [currentQuestionIndex])
+
+                return (
+                  <button
+                    key={`${question.id}-${option.id}`}
+                    data-index={questionIndex}
+                    data-id={option.id}
+                    data-order={order + 1}
+                    className={`questions-question-options-option ${active ? '' : 'hidden'} ${responses[questionIndex]?.id === option.id ? 'selected' : ''}`}
+                    onClick={addResponse}
+                  >
+                    <span className={`questions-question-options-option-text`}>{option.text}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+
+        <div className={`questions-results ${responses.length === questions.length ? '' : 'hidden'}`}>
+          <h2 className="questions-results-title">Based on your answers you've matched with:</h2>
+          <h1 className="questions-results-personality">{personality.name}</h1>
+          <h2 className="questions-results-description">{personality.description}</h2>
+          <h2 className="questions-results-drink">
+            <span>Ask your bartender for a </span>
+            <span className="underline">{personality.drink}</span>
+            <span>🍹</span>
+          </h2>
+          <button className="questions-results-restart" onClick={restart}>Restart</button>
+        </div>
+      </div>
+
+      <button
+        className={`start ${currentQuestionIndex < 0 ? '' : 'hidden'}`}
+        onClick={start}
+      >
+        Begin
+      </button>
+
+      <img className="logo" src={logo} />
+    </div >
+  );
+};
+
+export default App;
