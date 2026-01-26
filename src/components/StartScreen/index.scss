@@ -1,0 +1,220 @@
+.start-screen {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 20;
+  padding: 2rem;
+  
+  &__content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.5rem;
+    max-width: 500px;
+    text-align: center;
+    position: relative;
+    z-index: 10;
+  }
+  
+  &__logo {
+    width: 120px;
+    height: auto;
+    opacity: 0;
+    transform: translateY(-20px);
+    transition: opacity 0.6s ease, transform 0.6s ease;
+    
+    .ready & {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  &__title {
+    color: white;
+    font-size: 2.5rem;
+    font-weight: 700;
+    line-height: 1.2;
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 0.6s ease 0.1s, transform 0.6s ease 0.1s;
+    
+    .ready & {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    
+    @media (min-width: 768px) {
+      font-size: 3.5rem;
+    }
+  }
+  
+  &__subtitle {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 1.1rem;
+    line-height: 1.6;
+    max-width: 400px;
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 0.6s ease 0.2s, transform 0.6s ease 0.2s;
+    
+    .ready & {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  &__features {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 1rem;
+    margin: 1rem 0;
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 0.6s ease 0.3s, transform 0.6s ease 0.3s;
+    
+    .ready & {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  &__feature {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 100px;
+  }
+  
+  &__feature-icon {
+    font-size: 1rem;
+  }
+  
+  &__feature-text {
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 0.875rem;
+    font-weight: 500;
+  }
+  
+  &__button {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1.25rem 3rem;
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    border: none;
+    border-radius: 100px;
+    cursor: pointer;
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+    transition: opacity 0.6s ease 0.4s, transform 0.6s ease 0.4s, box-shadow 0.3s ease;
+    
+    .ready & {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+    
+    &:hover {
+      transform: scale(1.05);
+      box-shadow: 0 15px 40px rgba(79, 172, 254, 0.4);
+    }
+    
+    &:active {
+      transform: scale(0.98);
+    }
+  }
+  
+  &__button-text {
+    color: white;
+    font-size: 1.25rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+  }
+  
+  &__button-arrow {
+    color: white;
+    font-size: 1.5rem;
+    transition: transform 0.3s ease;
+    
+    .start-screen__button:hover & {
+      transform: translateX(5px);
+    }
+  }
+  
+  &__privacy {
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 0.75rem;
+    opacity: 0;
+    transition: opacity 0.6s ease 0.5s;
+    
+    .ready & {
+      opacity: 1;
+    }
+  }
+  
+  &__decoration {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+  }
+  
+  &__circle {
+    position: absolute;
+    border-radius: 50%;
+    opacity: 0.1;
+    
+    &--1 {
+      top: 10%;
+      left: -10%;
+      width: 400px;
+      height: 400px;
+      background: radial-gradient(circle, #4facfe 0%, transparent 70%);
+      animation: float 8s ease-in-out infinite;
+    }
+    
+    &--2 {
+      bottom: 10%;
+      right: -15%;
+      width: 500px;
+      height: 500px;
+      background: radial-gradient(circle, #00f2fe 0%, transparent 70%);
+      animation: float 10s ease-in-out infinite reverse;
+    }
+    
+    &--3 {
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 600px;
+      height: 600px;
+      background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 60%);
+      animation: pulse 4s ease-in-out infinite;
+    }
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-30px) rotate(5deg);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 0.1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  50% {
+    opacity: 0.15;
+    transform: translate(-50%, -50%) scale(1.1);
+  }
+}

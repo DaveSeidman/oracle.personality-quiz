@@ -1,0 +1,108 @@
+.question {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 2rem;
+  position: relative;
+  transition: opacity 0.5s ease, transform 0.5s ease;
+  
+  &--hidden {
+    opacity: 0;
+    transform: translateY(50px);
+    pointer-events: none;
+  }
+  
+  &--active {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  
+  &--answered {
+    opacity: 0.5;
+    transform: scale(0.95);
+    pointer-events: none;
+    
+    .question__text {
+      color: rgba(255, 255, 255, 0.5);
+    }
+  }
+  
+  &__text {
+    color: white;
+    font-size: 1.75rem;
+    font-weight: 600;
+    text-align: center;
+    max-width: 700px;
+    line-height: 1.4;
+    margin-bottom: 2.5rem;
+    min-height: 2.5em;
+    
+    @media (min-width: 768px) {
+      font-size: 2.25rem;
+    }
+    
+    // TypeAnimation cursor styling
+    .Typewriter__cursor {
+      color: rgba(79, 172, 254, 0.8);
+      animation: blink 0.8s ease-in-out infinite;
+    }
+  }
+  
+  &__content {
+    width: 100%;
+    max-width: 600px;
+    opacity: 0;
+    transform: translateY(30px);
+    transition: opacity 0.5s ease, transform 0.5s ease;
+    
+    &.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
+
+@keyframes blink {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}
+
+// Animation for staggered option reveals
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes popIn {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

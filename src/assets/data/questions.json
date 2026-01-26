@@ -1,47 +1,126 @@
 [
   {
     "id": "q1",
+    "type": "text-multiple-choice",
+    "selection": "single",
+    "randomize": true,
     "text": "Your ideal AI experience feels:",
     "options": [
-      { "id": "A", "text": "Eye-opening" },
-      { "id": "B", "text": "Effortless" },
-      { "id": "C", "text": "Dependable" }
+      { "id": "A", "text": "Eye-opening", "weight": { "A": 1, "B": 0, "C": 0 } },
+      { "id": "B", "text": "Effortless", "weight": { "A": 0, "B": 1, "C": 0 } },
+      { "id": "C", "text": "Dependable", "weight": { "A": 0, "B": 0, "C": 1 } }
     ]
   },
   {
     "id": "q2",
+    "type": "slide-to-select",
+    "selection": "single",
+    "randomize": true,
     "text": "When new data lands in your lap, you first:",
     "options": [
-      { "id": "A", "text": "Look for hidden insight" },
-      { "id": "B", "text": "Think how to operationalize" },
-      { "id": "C", "text": "Validate accuracy and context" }
+      { "id": "A", "text": "Look for hidden insight", "weight": { "A": 1, "B": 0, "C": 0 } },
+      { "id": "B", "text": "Think how to operationalize", "weight": { "A": 0, "B": 1, "C": 0 } },
+      { "id": "C", "text": "Validate accuracy and context", "weight": { "A": 0, "B": 0, "C": 1 } }
     ]
   },
   {
     "id": "q3",
-    "text": "AI should mostly help teams:",
+    "type": "image-multiple-choice",
+    "selection": "multiple",
+    "maxSelections": 2,
+    "randomize": true,
+    "text": "Select up to 2 images that represent your approach to problem-solving:",
     "options": [
-      { "id": "A", "text": "Make smarter decisions" },
-      { "id": "B", "text": "Move faster at scale" },
-      { "id": "C", "text": "Reduce risk and uncertainty" }
+      { 
+        "id": "A", 
+        "text": "Deep Analysis",
+        "image": "/images/analysis.svg",
+        "weight": { "A": 1, "B": 0, "C": 0 }
+      },
+      { 
+        "id": "B", 
+        "text": "Rapid Iteration",
+        "image": "/images/iteration.svg",
+        "weight": { "A": 0, "B": 1, "C": 0 }
+      },
+      { 
+        "id": "C", 
+        "text": "Systematic Verification",
+        "image": "/images/verification.svg",
+        "weight": { "A": 0, "B": 0, "C": 1 }
+      },
+      {
+        "id": "D",
+        "text": "Creative Exploration",
+        "image": "/images/creative.svg",
+        "weight": { "A": 0.5, "B": 0.5, "C": 0 }
+      }
     ]
   },
   {
     "id": "q4",
-    "text": "Innovation works best when it is:",
+    "type": "ranked-choice",
+    "randomize": true,
+    "text": "Rank these innovation qualities from most to least important to you:",
     "options": [
-      { "id": "A", "text": "Insightful" },
-      { "id": "B", "text": "Seamless" },
-      { "id": "C", "text": "Trusted" }
+      { "id": "A", "text": "Insightful", "weight": { "A": 1, "B": 0, "C": 0 } },
+      { "id": "B", "text": "Seamless", "weight": { "A": 0, "B": 1, "C": 0 } },
+      { "id": "C", "text": "Trusted", "weight": { "A": 0, "B": 0, "C": 1 } },
+      { "id": "D", "text": "Scalable", "weight": { "A": 0, "B": 0.7, "C": 0.3 } }
     ]
   },
   {
     "id": "q5",
+    "type": "range",
+    "text": "How much do you agree with each statement?",
+    "statements": [
+      { 
+        "id": "ai-insight", 
+        "text": "AI's greatest value is uncovering insights humans would miss", 
+        "min": 0, 
+        "max": 10, 
+        "step": 1,
+        "labels": { "0": "Disagree", "10": "Agree" },
+        "weight": { "A": 1, "B": 0, "C": 0 }
+      },
+      { 
+        "id": "ai-efficiency", 
+        "text": "AI should primarily make existing workflows faster", 
+        "min": 0, 
+        "max": 10, 
+        "step": 1,
+        "labels": { "0": "Disagree", "10": "Agree" },
+        "weight": { "A": 0, "B": 1, "C": 0 }
+      },
+      { 
+        "id": "ai-trust", 
+        "text": "I won't adopt AI until I fully trust its outputs", 
+        "min": 0, 
+        "max": 10, 
+        "step": 1,
+        "labels": { "0": "Disagree", "10": "Agree" },
+        "weight": { "A": 0, "B": 0, "C": 1 }
+      }
+    ]
+  },
+  {
+    "id": "q6",
+    "type": "text-multiple-choice",
+    "selection": "single",
+    "randomize": true,
     "text": "The biggest potential win with analytics is:",
     "options": [
-      { "id": "A", "text": "Actionable answers" },
-      { "id": "B", "text": "Clean, governed data" },
-      { "id": "C", "text": "Confidence in decisions" }
+      { "id": "A", "text": "Actionable answers", "weight": { "A": 1, "B": 0, "C": 0 } },
+      { "id": "B", "text": "Clean, governed data", "weight": { "A": 0, "B": 0.5, "C": 0.5 } },
+      { "id": "C", "text": "Confidence in decisions", "weight": { "A": 0, "B": 0, "C": 1 } }
     ]
+  },
+  {
+    "id": "q7",
+    "type": "free-response",
+    "text": "In one sentence, describe what 'intelligent automation' means to you:",
+    "placeholder": "Type your response here...",
+    "minLength": 10,
+    "maxLength": 280
   }
 ]

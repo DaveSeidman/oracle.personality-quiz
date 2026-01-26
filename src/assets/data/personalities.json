@@ -3,18 +3,24 @@
     "id": "A",
     "name": "The Insight Seeker",
     "description": "Driven by curiosity and clarity, you uncover meaning in data and turn insight into smarter decisions.",
-    "drink": "Dry Gin & Tonic"
+    "drink": "Dry Gin & Tonic",
+    "traits": ["analytical", "curious", "strategic"],
+    "aiPromptContext": "Values discovery and finding hidden patterns. Prioritizes depth of understanding over speed."
   },
   {
     "id": "B",
     "name": "The Flow Master",
     "description": "You thrive when systems just work—smooth, scalable, and efficient, with friction removed.",
-    "drink": "Clean Lager"
+    "drink": "Clean Lager",
+    "traits": ["efficient", "pragmatic", "action-oriented"],
+    "aiPromptContext": "Values seamless execution and operational excellence. Prioritizes speed and scalability."
   },
   {
     "id": "C",
     "name": "The Verifier",
     "description": "You make sure everything checks out, valuing trusted data, confidence, and dependable outcomes.",
-    "drink": "Classic Old Fashioned"
+    "drink": "Classic Old Fashioned",
+    "traits": ["methodical", "trustworthy", "detail-oriented"],
+    "aiPromptContext": "Values accuracy and reliability above all. Prioritizes confidence and validated results."
   }
 ]
