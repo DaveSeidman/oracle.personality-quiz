@@ -1,6 +1,7 @@
 [
   {
     "id": "q1",
+    
     "text": "Your ideal AI experience feels:",
     "options": [
       { "id": "A", "text": "Eye-opening" },
@@ -10,38 +11,12 @@
   },
   {
     "id": "q2",
+    "type": "ranked",
     "text": "When new data lands in your lap, you first:",
     "options": [
       { "id": "A", "text": "Look for hidden insight" },
       { "id": "B", "text": "Think how to operationalize" },
       { "id": "C", "text": "Validate accuracy and context" }
-    ]
-  },
-  {
-    "id": "q3",
-    "text": "AI should mostly help teams:",
-    "options": [
-      { "id": "A", "text": "Make smarter decisions" },
-      { "id": "B", "text": "Move faster at scale" },
-      { "id": "C", "text": "Reduce risk and uncertainty" }
-    ]
-  },
-  {
-    "id": "q4",
-    "text": "Innovation works best when it is:",
-    "options": [
-      { "id": "A", "text": "Insightful" },
-      { "id": "B", "text": "Seamless" },
-      { "id": "C", "text": "Trusted" }
-    ]
-  },
-  {
-    "id": "q5",
-    "text": "The biggest potential win with analytics is:",
-    "options": [
-      { "id": "A", "text": "Actionable answers" },
-      { "id": "B", "text": "Clean, governed data" },
-      { "id": "C", "text": "Confidence in decisions" }
     ]
   }
 ]

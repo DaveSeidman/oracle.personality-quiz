@@ -1,0 +1,80 @@
+.question {
+  width: 100%;
+
+  &.hidden {
+    display: none;
+  }
+
+  &-text {
+    margin: 0 0 12px 0;
+  }
+
+  &-options {
+    &.hidden {
+      display: none;
+    }
+  }
+
+  &-sortable {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  &-option {
+    display: grid;
+    grid-template-columns: 38px 1fr 42px;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 14px;
+    border-radius: 12px;
+
+    // you likely already style buttons globally; this is just for the div rows
+    background: rgba(255, 255, 255, 0.08);
+
+    &.dragging {
+      opacity: 0.85;
+    }
+
+    &-rank {
+      font-weight: 600;
+      opacity: 0.8;
+      text-align: center;
+    }
+
+    &-text {
+      line-height: 1.2;
+    }
+
+    &-handle {
+      width: 42px;
+      height: 42px;
+      border-radius: 10px;
+      border: 0;
+      background: rgba(255, 255, 255, 0.10);
+      font-size: 20px;
+      cursor: grab;
+
+      &:active {
+        cursor: grabbing;
+      }
+    }
+  }
+
+  &-continue {
+    margin-top: 14px;
+
+    &.hidden {
+      display: none;
+    }
+  }
+
+  &-ranking-summary {
+    margin-top: 12px;
+    opacity: 0.75;
+
+    &-item {
+      margin-top: 6px;
+    }
+  }
+}
