@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { haptic, getPointerPressure } from '../../../utils';
 import './index.scss';
 
@@ -145,13 +145,19 @@ const SlideToSelect = ({
   const [sliderDurations, setSliderDurations] = useState({});
   const timersRef = useRef([]);
   const optionsShownRef = useRef(false);
+  const markOptionsShownRef = useRef(markOptionsShown);
+  
+  // Keep ref updated
+  markOptionsShownRef.current = markOptionsShown;
   
   const { selection = 'single', maxSelections = 1, options } = question;
   const maxAllowed = selection === 'single' ? 1 : (maxSelections || options.length);
   
-  const orderedOptions = presentationOrder.map(id => 
-    options.find(o => o.id === id)
-  ).filter(Boolean);
+  // Memoize to prevent infinite loops
+  const orderedOptions = useMemo(() => 
+    presentationOrder.map(id => options.find(o => o.id === id)).filter(Boolean),
+    [presentationOrder, options]
+  );
   
   useEffect(() => {
     if (!isActive) return;
@@ -161,17 +167,15 @@ const SlideToSelect = ({
     setVisibleOptions([]);
     optionsShownRef.current = false;
     
-    const questionDelay = question.text.length * questionSpeed + 500;
-    
     orderedOptions.forEach((option, index) => {
-      const startDelay = questionDelay + (index * 300);
+      const startDelay = index * 200;
       
       const timer = setTimeout(() => {
         setVisibleOptions(prev => [...prev, option.id]);
         
         if (!optionsShownRef.current) {
           optionsShownRef.current = true;
-          markOptionsShown?.();
+          markOptionsShownRef.current?.();
         }
       }, startDelay);
       
@@ -181,7 +185,7 @@ const SlideToSelect = ({
     return () => {
       timersRef.current.forEach(t => clearTimeout(t));
     };
-  }, [isActive, question, orderedOptions, questionSpeed, markOptionsShown]);
+  }, [isActive, orderedOptions]);
   
   const handleSelect = useCallback((optionId, duration) => {
     trackSelection?.(optionId, true);

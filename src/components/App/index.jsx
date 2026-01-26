@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import StartScreen from '../StartScreen';
 import Question from '../Question';
-import AnalysisAnimation from '../AnalysisAnimation';
+import MicroFeedback from '../MicroFeedback';
 import Results from '../Results';
 import { useAnalytics, useIdleTimeout } from '../../hooks';
 import { shuffle } from '../../utils';
@@ -17,7 +17,7 @@ import './index.scss';
 
 const IDLE_DELAY = 45000; // 45 seconds
 const TYPE_SPEED = 50;
-const ANALYSIS_DURATION = 8000; // 8 seconds for analysis animation
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 const App = () => {
   // Core state
@@ -28,6 +28,8 @@ const App = () => {
   const [personality, setPersonality] = useState(null);
   const [scores, setScores] = useState({});
   const [fullscreen, setFullscreen] = useState(false);
+  const [currentFeedback, setCurrentFeedback] = useState(null);
+  const [apiResult, setApiResult] = useState(null);
   
   // Prepared questions with randomized options
   const [preparedQuestions, setPreparedQuestions] = useState([]);
@@ -117,8 +119,11 @@ const App = () => {
     // Finalize current question analytics
     const questionAnalytics = analytics.finalizeQuestion(response);
     
-    // Generate micro feedback
-    const feedback = generateMicroFeedback(questionAnalytics, question);
+    // Generate micro feedback and display it
+    const feedback = generateMicroFeedback(questionAnalytics, question?.type);
+    if (feedback && feedback.length > 0) {
+      setCurrentFeedback(feedback);
+    }
     
     // Store response with analytics
     setResponses(prev => {
@@ -140,20 +145,33 @@ const App = () => {
       setCurrentQuestionIndex(nextIndex);
       analytics.initQuestion(preparedQuestions[nextIndex]);
     } else {
-      // Quiz complete - start analysis
+      // Quiz complete - call API immediately
       setPhase('analyzing');
+      
+      // Build responses array with current response included
+      const allResponses = [...responses];
+      allResponses[questionIndex] = {
+        questionId: question.id,
+        questionType: question.type,
+        response,
+        analytics: questionAnalytics,
+        feedback,
+      };
+      
+      // Call API right away
+      analyzeQuiz(allResponses);
     }
     
     return { feedback };
-  }, [preparedQuestions, analytics]);
+  }, [preparedQuestions, analytics, responses]);
   
-  // Handle analysis complete
-  const handleAnalysisComplete = useCallback(() => {
-    // Calculate final scores
-    const allAnalytics = responses.map(r => r.analytics);
-    const calculatedScores = calculateScores(responses, preparedQuestions, personalitiesData);
+  // Analyze quiz - calls backend API immediately
+  const analyzeQuiz = useCallback(async (allResponses) => {
+    // Calculate local scores as fallback
+    const allAnalytics = allResponses.map(r => r.analytics);
+    const calculatedScores = calculateScores(allAnalytics, preparedQuestions, personalitiesData);
     
-    // Find winning personality
+    // Find local winning personality (fallback)
     let maxScore = -Infinity;
     let winningPersonality = null;
     
@@ -164,15 +182,173 @@ const App = () => {
       }
     });
     
-    // Generate AI payload (for potential API call)
-    const aiPayload = generateAIPayload(responses, preparedQuestions, personalitiesData, calculatedScores);
-    console.log('AI Payload ready:', aiPayload);
+    // Build API payload
+    const apiPayload = buildApiPayload(allResponses, preparedQuestions, personalitiesData, calculatedScores);
+    console.log('Sending to API:', apiPayload);
     
-    // Set results
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/quiz/analyze`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(apiPayload),
+      });
+      
+      if (res.ok) {
+        const data = await res.json();
+        console.log('API Response:', data);
+        setApiResult(data);
+        
+        if (data.ok && data.personalityId) {
+          // Use API-determined personality
+          const apiPersonality = personalitiesData.find(p => p.id === data.personalityId);
+          if (apiPersonality) {
+            winningPersonality = apiPersonality;
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('API call failed, using local scoring:', err);
+    }
+    
+    // Set results and show immediately
     setScores(calculatedScores);
     setPersonality(winningPersonality);
     setPhase('results');
-  }, [responses, preparedQuestions]);
+  }, [preparedQuestions]);
+  
+  // Build payload for backend API
+  const buildApiPayload = (responses, questions, personalities, scores) => {
+    return {
+      quizId: 'ai-personality-quiz',
+      personalities: personalities.map(p => ({ id: p.id, name: p.name })),
+      clientFallback: {
+        personalityId: Object.entries(scores).sort((a, b) => b[1] - a[1])[0]?.[0] || personalities[0]?.id,
+      },
+      questions: responses.map((r, idx) => {
+        const q = questions[idx];
+        const analytics = r.analytics || {};
+        const timing = analytics.timing || {};
+        
+        // Map frontend question types to backend types
+        const typeMap = {
+          'text-multiple-choice': 'multiple_choice',
+          'image-multiple-choice': 'image_grid',
+          'slide-to-select': 'multiple_choice',
+          'ranked-choice': 'ordering',
+          'range': 'slider',
+          'free-response': 'text',
+        };
+        
+        const mappedType = typeMap[q.type] || q.type;
+        
+        const baseQuestion = {
+          id: q.id,
+          type: mappedType,
+        };
+        
+        // Only add timing fields if they have valid values
+        if (timing.questionShownAt) baseQuestion.startedAtMs = Math.round(timing.questionShownAt);
+        if (timing.completedAt) baseQuestion.answeredAtMs = Math.round(timing.completedAt);
+        if (timing.responseTime) baseQuestion.delayMs = Math.round(timing.responseTime);
+        
+        // Add type-specific data
+        switch (q.type) {
+          case 'text-multiple-choice':
+          case 'image-multiple-choice':
+          case 'slide-to-select': {
+            const selectedIds = analytics.response?.selectedIds || [];
+            // Only include selectedId if we have one
+            if (selectedIds[0]) {
+              baseQuestion.selectedId = selectedIds[0];
+            }
+            const hoverMap = buildHoverMap(analytics.interactions);
+            if (hoverMap) {
+              baseQuestion.hoverMsByOption = hoverMap;
+            }
+            if (selectedIds.length > 1) {
+              baseQuestion.changedMind = true;
+            }
+            return baseQuestion;
+          }
+          case 'ranked-choice': {
+            // Use r.response (the finalOrder array passed to onComplete) since analytics.rankings.final
+            // may not be updated yet due to async state update race condition
+            const finalOrder = Array.isArray(r.response) ? r.response : (analytics.rankings?.final || []);
+            // Only include order if we have 2+ items
+            if (finalOrder.length >= 2) {
+              baseQuestion.order = finalOrder;
+            }
+            const swaps = analytics.rankings?.moves?.length || 0;
+            if (swaps > 0) {
+              baseQuestion.swaps = swaps;
+            }
+            if (timing.responseTime) {
+              baseQuestion.durationMs = Math.round(timing.responseTime);
+            }
+            return baseQuestion;
+          }
+          case 'range': {
+            // Use r.response as fallback for the same race condition reason
+            // Filter to only numeric values (slider values, not the default arrays)
+            const responseObj = analytics.response || r.response || {};
+            const numericValues = Object.entries(responseObj)
+              .filter(([key, val]) => typeof val === 'number')
+              .reduce((acc, [key, val]) => ({ ...acc, [key]: val }), {});
+            
+            const firstValue = Object.values(numericValues)[0];
+            if (typeof firstValue === 'number') {
+              // Normalize based on typical 1-10 range to 0-1
+              baseQuestion.value = Math.max(0, Math.min(1, firstValue / 10));
+            }
+            if (timing.responseTime) {
+              baseQuestion.durationMs = Math.round(timing.responseTime);
+            }
+            const reversals = countReversals(analytics.sliderData);
+            if (reversals > 0) {
+              baseQuestion.reversals = reversals;
+            }
+            return baseQuestion;
+          }
+          case 'free-response': {
+            const text = analytics.response?.text || r.response;
+            if (text) {
+              baseQuestion.text = text;
+            }
+            return baseQuestion;
+          }
+          default:
+            return baseQuestion;
+        }
+      }),
+    };
+  };
+  
+  // Helper: build hover time map from interactions
+  const buildHoverMap = (interactions = []) => {
+    const hovers = {};
+    interactions
+      .filter(i => i.type === 'hover' && i.targetId)
+      .forEach(i => {
+        hovers[i.targetId] = (hovers[i.targetId] || 0) + 100; // Approximate hover time
+      });
+    return Object.keys(hovers).length > 0 ? hovers : null;
+  };
+  
+  // Helper: count slider reversals
+  const countReversals = (sliderData = {}) => {
+    let reversals = 0;
+    Object.values(sliderData).forEach(data => {
+      if (data?.changes) {
+        let lastDir = 0;
+        data.changes.forEach(c => {
+          const dir = c.to > c.from ? 1 : -1;
+          if (lastDir !== 0 && dir !== lastDir) reversals++;
+          lastDir = dir;
+        });
+      }
+    });
+    return reversals;
+  };
   
   // Track interactions
   const handleInteraction = useCallback((questionIndex, interaction) => {
@@ -236,13 +412,21 @@ const App = () => {
         ))}
       </div>
       
-      {/* Analysis Animation */}
-      <AnalysisAnimation
-        isActive={phase === 'analyzing'}
-        // videoSrc={analysisVideo}
-        duration={ANALYSIS_DURATION}
-        onComplete={handleAnalysisComplete}
-      />
+      {/* Micro Feedback Overlay */}
+      {phase === 'quiz' && (
+        <MicroFeedback 
+          feedback={currentFeedback}
+          onComplete={() => setCurrentFeedback(null)}
+        />
+      )}
+      
+      {/* Loading indicator while analyzing */}
+      {phase === 'analyzing' && (
+        <div className="app__loading">
+          <div className="app__loading-spinner" />
+          <p>Analyzing responses...</p>
+        </div>
+      )}
       
       {/* Results */}
       <Results

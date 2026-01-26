@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useMemo } from 'react';
 import {
   createQuestionAnalytics,
   recordInteraction,
@@ -99,8 +99,32 @@ export const useAnalytics = () => {
   }, []);
   
   // Finalize current question and return analytics
-  const finalizeQuestion = useCallback((response) => {
+  const finalizeQuestion = useCallback((responseData) => {
     if (!currentAnalytics) return null;
+    
+    // Structure the response based on question type
+    let response;
+    if (Array.isArray(responseData)) {
+      // Multiple choice types pass array of selected IDs
+      response = {
+        ...currentAnalytics.response,
+        selectedIds: responseData,
+      };
+    } else if (typeof responseData === 'string') {
+      // Free response passes text string
+      response = {
+        ...currentAnalytics.response,
+        text: responseData,
+      };
+    } else if (typeof responseData === 'object') {
+      // Range slider passes object of values
+      response = {
+        ...currentAnalytics.response,
+        ...responseData,
+      };
+    } else {
+      response = currentAnalytics.response;
+    }
     
     // Add response to analytics
     const withResponse = {
@@ -141,10 +165,9 @@ export const useAnalytics = () => {
     feedbackQueueRef.current = [];
   }, []);
   
-  return {
+  return useMemo(() => ({
     currentAnalytics,
     allAnalytics,
-    microFeedback: feedbackQueueRef.current,
     
     // Actions
     initQuestion,
@@ -160,7 +183,23 @@ export const useAnalytics = () => {
     addMicroFeedback,
     getAllAnalytics,
     reset,
-  };
+  }), [
+    currentAnalytics,
+    allAnalytics,
+    initQuestion,
+    markOptionsShown,
+    trackInteraction,
+    trackSelection,
+    trackRankMove,
+    trackSliderChange,
+    trackTyping,
+    setFinalRankings,
+    finalizeQuestion,
+    popMicroFeedback,
+    addMicroFeedback,
+    getAllAnalytics,
+    reset,
+  ]);
 };
 
 export default useAnalytics;

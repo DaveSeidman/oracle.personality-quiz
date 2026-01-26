@@ -151,10 +151,14 @@ const RangeSlider = ({
   const [isReady, setIsReady] = useState(false);
   const timersRef = useRef([]);
   const optionsShownRef = useRef(false);
+  const markOptionsShownRef = useRef(markOptionsShown);
+  
+  // Keep ref updated
+  markOptionsShownRef.current = markOptionsShown;
   
   const { statements = [] } = question;
   
-  // Reveal statements with timing
+  // Reveal statements with timing (no questionDelay since Question wrapper handles that)
   useEffect(() => {
     if (!isActive) return;
     
@@ -165,8 +169,6 @@ const RangeSlider = ({
     
     timersRef.current.forEach(t => clearTimeout(t));
     timersRef.current = [];
-    
-    const questionDelay = question.text.length * questionSpeed + 500;
     
     statements.forEach((stmt, index) => {
       const timer = setTimeout(() => {
@@ -180,13 +182,13 @@ const RangeSlider = ({
         
         if (!optionsShownRef.current) {
           optionsShownRef.current = true;
-          markOptionsShown?.();
+          markOptionsShownRef.current?.();
         }
         
         if (index === statements.length - 1) {
           setTimeout(() => setIsReady(true), 300);
         }
-      }, questionDelay + (index * 400));
+      }, index * 250);
       
       timersRef.current.push(timer);
     });
@@ -194,7 +196,7 @@ const RangeSlider = ({
     return () => {
       timersRef.current.forEach(t => clearTimeout(t));
     };
-  }, [isActive, question, statements, questionSpeed, markOptionsShown]);
+  }, [isActive, statements]);
   
   const handleValueChange = useCallback((statementId, value) => {
     setValues(prev => ({ ...prev, [statementId]: value }));

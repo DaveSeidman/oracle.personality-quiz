@@ -58,57 +58,34 @@ const FeedbackMessage = ({ message, onComplete }) => {
   );
 };
 
-const MicroFeedback = ({ feedback, messages = [], onComplete }) => {
+const MicroFeedback = ({ feedback, onComplete }) => {
   const [displayMessages, setDisplayMessages] = useState([]);
   const messageIdRef = useRef(0);
-  const queueRef = useRef([]);
-  const isProcessingRef = useRef(false);
+  const lastFeedbackRef = useRef(null);
   
-  // Handle single feedback prop or messages array
+  // Process new feedback only when it actually changes
   useEffect(() => {
-    // Process feedback array (from generateMicroFeedback)
-    if (Array.isArray(feedback) && feedback.length > 0) {
-      queueRef.current = [...queueRef.current, ...feedback.map(m => ({
-        ...m,
-        id: ++messageIdRef.current,
-      }))];
-    } 
-    // Process single feedback object
-    else if (feedback && typeof feedback === 'object' && feedback.text) {
-      queueRef.current.push({
-        ...feedback,
-        id: ++messageIdRef.current,
-      });
-    }
-    // Process messages array (legacy prop)
-    else if (messages.length > 0) {
-      queueRef.current = [...queueRef.current, ...messages.map(m => ({
-        ...m,
-        id: ++messageIdRef.current,
-      }))];
-    }
-  }, [feedback, messages]);
-  
-  // Process queue
-  useEffect(() => {
-    const processQueue = () => {
-      if (isProcessingRef.current || queueRef.current.length === 0) return;
-      
-      isProcessingRef.current = true;
-      const nextMessage = queueRef.current.shift();
-      
-      setDisplayMessages(prev => [...prev.slice(-2), nextMessage]);
-      
-      // Allow next message after delay
-      setTimeout(() => {
-        isProcessingRef.current = false;
-        processQueue();
-      }, 800);
-    };
+    // Skip if no feedback or same feedback array reference
+    if (!feedback || feedback === lastFeedbackRef.current) return;
     
-    const interval = setInterval(processQueue, 100);
-    return () => clearInterval(interval);
-  }, []);
+    // Skip if feedback is empty array
+    if (Array.isArray(feedback) && feedback.length === 0) return;
+    
+    // Mark this feedback as processed
+    lastFeedbackRef.current = feedback;
+    
+    // Add new messages
+    const newMessages = (Array.isArray(feedback) ? feedback : [feedback])
+      .filter(m => m && m.text)
+      .map(m => ({
+        ...m,
+        id: ++messageIdRef.current,
+      }));
+    
+    if (newMessages.length > 0) {
+      setDisplayMessages(prev => [...prev, ...newMessages].slice(-3)); // Keep max 3
+    }
+  }, [feedback]);
   
   const handleMessageComplete = useCallback((messageId) => {
     setDisplayMessages(prev => prev.filter(m => m.id !== messageId));

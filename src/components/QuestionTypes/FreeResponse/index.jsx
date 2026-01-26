@@ -17,6 +17,10 @@ const FreeResponse = ({
   const [charCount, setCharCount] = useState(0);
   const textareaRef = useRef(null);
   const timerRef = useRef(null);
+  const markOptionsShownRef = useRef(markOptionsShown);
+  
+  // Keep ref updated
+  markOptionsShownRef.current = markOptionsShown;
   
   const { 
     placeholder = 'Type your response...', 
@@ -26,29 +30,28 @@ const FreeResponse = ({
   
   const isValid = text.length >= minLength && text.length <= maxLength;
   
-  // Show input after question animation
+  // Show input immediately when active (Question wrapper already handles the question text delay)
   useEffect(() => {
     if (!isActive) return;
     
     setText('');
     setIsVisible(false);
     
-    const questionDelay = question.text.length * questionSpeed + 500;
-    
+    // Small delay just for smooth transition
     timerRef.current = setTimeout(() => {
       setIsVisible(true);
-      markOptionsShown?.();
+      markOptionsShownRef.current?.();
       
       // Auto-focus on tablet
       setTimeout(() => {
         textareaRef.current?.focus();
       }, 100);
-    }, questionDelay);
+    }, 100);
     
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
     };
-  }, [isActive, question.text.length, questionSpeed, markOptionsShown]);
+  }, [isActive]);
   
   const handleFocus = useCallback(() => {
     setIsFocused(true);

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { haptic, getPointerPressure } from '../../../utils';
 import './index.scss';
 
@@ -17,16 +17,21 @@ const TextMultipleChoice = ({
   const [selectedIds, setSelectedIds] = useState([]);
   const timersRef = useRef([]);
   const optionsShownRef = useRef(false);
+  const markOptionsShownRef = useRef(markOptionsShown);
+  
+  // Keep ref updated
+  markOptionsShownRef.current = markOptionsShown;
   
   const { selection = 'single', maxSelections = 1, options } = question;
   const maxAllowed = selection === 'single' ? 1 : (maxSelections || options.length);
   
-  // Get options in presentation order
-  const orderedOptions = presentationOrder.map(id => 
-    options.find(o => o.id === id)
-  ).filter(Boolean);
+  // Get options in presentation order - memoized to prevent infinite loops
+  const orderedOptions = useMemo(() => 
+    presentationOrder.map(id => options.find(o => o.id === id)).filter(Boolean),
+    [presentationOrder, options]
+  );
   
-  // Reveal options with timing
+  // Reveal options with timing (no questionDelay since Question wrapper already handles that)
   useEffect(() => {
     if (!isActive) return;
     
@@ -36,14 +41,9 @@ const TextMultipleChoice = ({
     setVisibleOptions([]);
     optionsShownRef.current = false;
     
-    const questionDelay = question.text.length * questionSpeed + 500;
-    
     orderedOptions.forEach((option, index) => {
-      const cumulativeDelay = orderedOptions
-        .slice(0, index)
-        .reduce((acc, o) => acc + o.text.length * answerSpeed, 0);
-      const interOptionDelay = index * 100;
-      const startDelay = questionDelay + cumulativeDelay + interOptionDelay;
+      // Just stagger the options, no need to wait for question text again
+      const startDelay = index * 100;
       
       const timer = setTimeout(() => {
         setVisibleOptions(prev => [...prev, option.id]);
@@ -51,7 +51,7 @@ const TextMultipleChoice = ({
         // Mark options shown when first option appears
         if (!optionsShownRef.current) {
           optionsShownRef.current = true;
-          markOptionsShown?.();
+          markOptionsShownRef.current?.();
         }
       }, startDelay);
       
@@ -61,7 +61,10 @@ const TextMultipleChoice = ({
     return () => {
       timersRef.current.forEach(t => clearTimeout(t));
     };
-  }, [isActive, question, orderedOptions, questionSpeed, answerSpeed, markOptionsShown]);
+  }, [isActive, orderedOptions]);
+  
+  // Track which option is currently pressed (for detecting drag-away)
+  const pressedOptionRef = useRef(null);
   
   const handlePointerEnter = useCallback((e, optionId) => {
     trackInteraction?.({
@@ -72,6 +75,7 @@ const TextMultipleChoice = ({
   }, [trackInteraction]);
   
   const handlePointerDown = useCallback((e, optionId) => {
+    pressedOptionRef.current = optionId;
     trackInteraction?.({
       type: 'pointerdown',
       targetId: optionId,
@@ -80,7 +84,47 @@ const TextMultipleChoice = ({
     });
   }, [trackInteraction]);
   
+  const handlePointerLeave = useCallback((e, optionId) => {
+    // Check if they were pressing this button and dragged away (changed mind)
+    if (pressedOptionRef.current === optionId) {
+      trackInteraction?.({
+        type: 'pointerleave-while-pressed',
+        targetId: optionId,
+        data: { 
+          x: e.clientX, 
+          y: e.clientY,
+          changedMind: true,
+        },
+      });
+      pressedOptionRef.current = null;
+    } else {
+      trackInteraction?.({
+        type: 'pointerleave',
+        targetId: optionId,
+        data: { x: e.clientX, y: e.clientY },
+      });
+    }
+  }, [trackInteraction]);
+  
+  const handlePointerUp = useCallback((e, optionId) => {
+    // Clear pressed state on any pointer up
+    pressedOptionRef.current = null;
+  }, []);
+  
+  const handlePointerCancel = useCallback((e, optionId) => {
+    // Track cancelled interactions (finger dragged off screen, etc)
+    if (pressedOptionRef.current === optionId) {
+      trackInteraction?.({
+        type: 'pointercancel',
+        targetId: optionId,
+        data: { changedMind: true },
+      });
+      pressedOptionRef.current = null;
+    }
+  }, [trackInteraction]);
+  
   const handleSelect = useCallback((e, optionId) => {
+    pressedOptionRef.current = null; // Clear pressed state
     haptic(20);
     
     const pressure = getPointerPressure(e);
@@ -145,6 +189,9 @@ const TextMultipleChoice = ({
             disabled={!isVisible(option.id) || (!canSelectMore && !isSelected(option.id) && selection === 'multiple')}
             onPointerEnter={(e) => handlePointerEnter(e, option.id)}
             onPointerDown={(e) => handlePointerDown(e, option.id)}
+            onPointerLeave={(e) => handlePointerLeave(e, option.id)}
+            onPointerUp={(e) => handlePointerUp(e, option.id)}
+            onPointerCancel={(e) => handlePointerCancel(e, option.id)}
             onClick={(e) => handleSelect(e, option.id)}
           >
             <span className="text-multiple-choice__option-text">

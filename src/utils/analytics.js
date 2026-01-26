@@ -328,14 +328,15 @@ export const calculateScores = (allAnalytics, questions, personalities) => {
   
   allAnalytics.forEach((analytics, idx) => {
     const question = questions[idx];
-    if (!question) return;
+    if (!question || !analytics) return;
     
     switch (question.type) {
       case 'text-multiple-choice':
       case 'image-multiple-choice':
       case 'slide-to-select': {
-        analytics.response.selectedIds.forEach(id => {
-          const option = question.options.find(o => o.id === id);
+        const selectedIds = analytics.response?.selectedIds || [];
+        selectedIds.forEach(id => {
+          const option = question.options?.find(o => o.id === id);
           if (option?.weight) {
             Object.entries(option.weight).forEach(([pId, w]) => {
               scores[pId] = (scores[pId] || 0) + w;
@@ -348,7 +349,7 @@ export const calculateScores = (allAnalytics, questions, personalities) => {
       case 'ranked-choice': {
         const final = analytics.rankings?.final || [];
         final.forEach((id, rank) => {
-          const option = question.options.find(o => o.id === id);
+          const option = question.options?.find(o => o.id === id);
           if (option?.weight) {
             // Higher rank = more weight (rank 0 = 1.0, rank 1 = 0.75, etc.)
             const multiplier = 1 - (rank * 0.25);

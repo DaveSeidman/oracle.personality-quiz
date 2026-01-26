@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { haptic, getPointerPressure } from '../../../utils';
 import './index.scss';
 
@@ -21,13 +21,18 @@ const RankedChoice = ({
   const timersRef = useRef([]);
   const containerRef = useRef(null);
   const optionsShownRef = useRef(false);
+  const markOptionsShownRef = useRef(markOptionsShown);
+  
+  // Keep ref updated
+  markOptionsShownRef.current = markOptionsShown;
   
   const { options } = question;
   
-  // Get options in presentation order
-  const orderedOptions = presentationOrder.map(id => 
-    options.find(o => o.id === id)
-  ).filter(Boolean);
+  // Get options in presentation order - memoized to prevent infinite loops
+  const orderedOptions = useMemo(() => 
+    presentationOrder.map(id => options.find(o => o.id === id)).filter(Boolean),
+    [presentationOrder, options]
+  );
   
   // Initialize items when active
   useEffect(() => {
@@ -41,23 +46,21 @@ const RankedChoice = ({
     timersRef.current.forEach(t => clearTimeout(t));
     timersRef.current = [];
     
-    const questionDelay = question.text.length * questionSpeed + 500;
-    
-    // Reveal items one by one
+    // Reveal items one by one (no questionDelay since Question wrapper handles that)
     orderedOptions.forEach((_, index) => {
       const timer = setTimeout(() => {
         setVisibleCount(prev => prev + 1);
         
         if (!optionsShownRef.current) {
           optionsShownRef.current = true;
-          markOptionsShown?.();
+          markOptionsShownRef.current?.();
         }
         
         // Show confirm button after all items visible
         if (index === orderedOptions.length - 1) {
           setTimeout(() => setIsReady(true), 300);
         }
-      }, questionDelay + (index * 200));
+      }, index * 150);
       
       timersRef.current.push(timer);
     });
@@ -65,7 +68,7 @@ const RankedChoice = ({
     return () => {
       timersRef.current.forEach(t => clearTimeout(t));
     };
-  }, [isActive, orderedOptions, question.text.length, questionSpeed, markOptionsShown]);
+  }, [isActive, orderedOptions]);
   
   const handleDragStart = useCallback((e, item, index) => {
     haptic(10);
