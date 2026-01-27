@@ -3,18 +3,18 @@
     "id": "A",
     "name": "The Insight Seeker",
     "description": "Driven by curiosity and clarity, you uncover meaning in data and turn insight into smarter decisions.",
-    "drink": "Dry Gin & Tonic"
+    "drink": "The Aha Moment"
   },
   {
     "id": "B",
     "name": "The Flow Master",
     "description": "You thrive when systems just work—smooth, scalable, and efficient, with friction removed.",
-    "drink": "Clean Lager"
+    "drink": "Smooth Operator"
   },
   {
     "id": "C",
     "name": "The Verifier",
     "description": "You make sure everything checks out, valuing trusted data, confidence, and dependable outcomes.",
-    "drink": "Classic Old Fashioned"
+    "drink": "Clear Signal"
   }
 ]
