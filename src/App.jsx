@@ -20,7 +20,7 @@ function OptionButton({ runId, currentQuestionIndex, questionIndex, questionText
       (acc, prevOption) => acc + prevOption.text.length * ANSWER_SPEED,
       0
     );
-  const interOptionDelay = order * 100;
+  const interOptionDelay = order * 50;
   const startDelay = questionDelay + cumulativeDelay + interOptionDelay;
 
   // HARD RESET ONLY (restart / idle timeout)
@@ -259,8 +259,8 @@ const App = () => {
             {personality?.description}
           </h2>
           <h2 className="questions-results-drink">
-            <span>Ask your bartender for a </span>
-            <span className="underline">{personality?.drink}</span>
+            <span>Ask your bartender for the</span>
+            <span className="bold">{personality?.drink}</span>
             <span>🍹</span>
           </h2>
           <button className="questions-results-restart" onClick={restart}>

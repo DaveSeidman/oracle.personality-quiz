@@ -220,7 +220,7 @@ body,
 
         &-option {
           padding: 1.5vh 4vh;
-          transition: background .5s, transform 2s;
+          transition: background .5s, transform 1s;
 
           &.hidden {
             transform: translateX(100%);
@@ -334,5 +334,9 @@ body,
   .underline {
     text-decoration: underline;
     text-underline-offset: 6px;
+  }
+
+  .bold {
+    font-weight: 600;
   }
 }

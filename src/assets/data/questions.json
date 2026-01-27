@@ -12,7 +12,7 @@
     "id": "q2",
     "text": "When new data lands in your lap, you first:",
     "options": [
-      { "id": "A", "text": "Look for hidden insight" },
+      { "id": "A", "text": "Look for insight hiding inside" },
       { "id": "B", "text": "Think how to operationalize" },
       { "id": "C", "text": "Validate accuracy and context" }
     ]
@@ -39,8 +39,8 @@
     "id": "q5",
     "text": "The biggest potential win with analytics is:",
     "options": [
-      { "id": "A", "text": "Actionable answers" },
-      { "id": "B", "text": "Clean, governed data" },
+      { "id": "A", "text": "Actionable answers to complex questions" },
+      { "id": "B", "text": "Clean, governed data for AI consumption" },
       { "id": "C", "text": "Confidence in decisions" }
     ]
   }
