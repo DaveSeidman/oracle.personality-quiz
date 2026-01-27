@@ -20,7 +20,7 @@ function OptionButton({ runId, currentQuestionIndex, questionIndex, questionText
       (acc, prevOption) => acc + prevOption.text.length * ANSWER_SPEED,
       0
     );
-  const interOptionDelay = order * 50;
+  const interOptionDelay = order * 75;
   const startDelay = questionDelay + cumulativeDelay + interOptionDelay;
 
   // HARD RESET ONLY (restart / idle timeout)
@@ -100,7 +100,7 @@ const App = () => {
 
   const IDLE_DELAY = 45000;
   const QUESTION_SPEED = 50;
-  const ANSWER_SPEED = 60;
+  const ANSWER_SPEED = 30;
 
   const handleFullscreenChange = () => {
     setFullscreen(document.fullscreenElement !== null);
@@ -245,10 +245,7 @@ const App = () => {
           </div>
         ))}
 
-        <div
-          className={`questions-results ${responses.length === questions.length ? "" : "hidden"
-            }`}
-        >
+        <div className={`questions-results ${responses.length === questions.length ? "" : "hidden"}`}>
           <h2 className="questions-results-title">
             Based on your answers you've matched with:
           </h2>
