@@ -9,13 +9,15 @@
     'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  
+
   // Touch action for better mobile handling
   touch-action: pan-y;
-  
+
   // Prevent text selection during quiz
   user-select: none;
   -webkit-user-select: none;
+  -webkit-touch-callout: none; // Prevent iOS long-press callouts
+  -webkit-tap-highlight-color: transparent; // No tap flash
 }
 
 .app__background {
@@ -23,23 +25,23 @@
   inset: 0;
   z-index: 0;
   transition: opacity 0.8s ease;
-  
+
   &.muted {
     opacity: 0.3;
   }
-  
+
   video {
     width: 100%;
     height: 100%;
     object-fit: cover;
   }
-  
+
   &-fallback {
     position: absolute;
     inset: 0;
     background: radial-gradient(ellipse at 30% 20%, rgba(79, 172, 254, 0.15) 0%, transparent 50%),
-                radial-gradient(ellipse at 70% 80%, rgba(0, 242, 254, 0.1) 0%, transparent 50%),
-                linear-gradient(180deg, #0a0a1a 0%, #1a1a3e 50%, #0a0a1a 100%);
+      radial-gradient(ellipse at 70% 80%, rgba(0, 242, 254, 0.1) 0%, transparent 50%),
+      linear-gradient(180deg, #0a0a1a 0%, #1a1a3e 50%, #0a0a1a 100%);
   }
 }
 
@@ -49,7 +51,7 @@
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.5s ease;
-  
+
   &.visible {
     opacity: 1;
     pointer-events: auto;
@@ -65,11 +67,11 @@
   z-index: 100;
   opacity: 0.8;
   transition: opacity 0.3s ease;
-  
+
   &:hover {
     opacity: 1;
   }
-  
+
   @media (max-width: 768px) {
     width: 60px;
     top: 1rem;
@@ -88,13 +90,13 @@
   gap: 1.5rem;
   background: rgba(10, 10, 26, 0.95);
   animation: fadeIn 0.3s ease;
-  
+
   p {
     color: rgba(255, 255, 255, 0.8);
     font-size: 1.1rem;
     letter-spacing: 0.05em;
   }
-  
+
   &-spinner {
     width: 40px;
     height: 40px;
@@ -112,7 +114,9 @@
 }
 
 // Global reset and base styles
-*, *::before, *::after {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
@@ -131,12 +135,15 @@ body {
 button {
   font-family: inherit;
   cursor: pointer;
-  
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation; // Faster clicks, no double-tap zoom
+
   &:focus {
     outline: 2px solid rgba(79, 172, 254, 0.5);
     outline-offset: 2px;
   }
-  
+
   &:focus:not(:focus-visible) {
     outline: none;
   }
@@ -154,7 +161,7 @@ button {
 ::-webkit-scrollbar-thumb {
   background: rgba(255, 255, 255, 0.2);
   border-radius: 4px;
-  
+
   &:hover {
     background: rgba(255, 255, 255, 0.3);
   }
@@ -165,6 +172,7 @@ button {
   from {
     opacity: 0;
   }
+
   to {
     opacity: 1;
   }
@@ -175,6 +183,7 @@ button {
     opacity: 0;
     transform: translateY(30px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -186,6 +195,7 @@ button {
     opacity: 0;
     transform: scale(0.9);
   }
+
   to {
     opacity: 1;
     transform: scale(1);
