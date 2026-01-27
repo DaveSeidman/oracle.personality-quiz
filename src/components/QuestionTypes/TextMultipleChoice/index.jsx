@@ -15,6 +15,7 @@ const TextMultipleChoice = ({
 }) => {
   const [visibleOptions, setVisibleOptions] = useState([]);
   const [selectedIds, setSelectedIds] = useState([]);
+  const [pressedId, setPressedId] = useState(null); // Track which button is pressed
   const timersRef = useRef([]);
   const optionsShownRef = useRef(false);
   const markOptionsShownRef = useRef(markOptionsShown);
@@ -76,6 +77,7 @@ const TextMultipleChoice = ({
   
   const handlePointerDown = useCallback((e, optionId) => {
     pressedOptionRef.current = optionId;
+    setPressedId(optionId); // Set pressed state for styling
     trackInteraction?.({
       type: 'pointerdown',
       targetId: optionId,
@@ -85,6 +87,11 @@ const TextMultipleChoice = ({
   }, [trackInteraction]);
   
   const handlePointerLeave = useCallback((e, optionId) => {
+    // Always clear pressed state on leave
+    if (pressedId === optionId) {
+      setPressedId(null);
+    }
+    
     // Check if they were pressing this button and dragged away (changed mind)
     if (pressedOptionRef.current === optionId) {
       trackInteraction?.({
@@ -104,14 +111,18 @@ const TextMultipleChoice = ({
         data: { x: e.clientX, y: e.clientY },
       });
     }
-  }, [trackInteraction]);
+  }, [trackInteraction, pressedId]);
   
   const handlePointerUp = useCallback((e, optionId) => {
     // Clear pressed state on any pointer up
     pressedOptionRef.current = null;
+    setPressedId(null);
   }, []);
   
   const handlePointerCancel = useCallback((e, optionId) => {
+    // Clear pressed state
+    setPressedId(null);
+    
     // Track cancelled interactions (finger dragged off screen, etc)
     if (pressedOptionRef.current === optionId) {
       trackInteraction?.({
@@ -125,6 +136,7 @@ const TextMultipleChoice = ({
   
   const handleSelect = useCallback((e, optionId) => {
     pressedOptionRef.current = null; // Clear pressed state
+    setPressedId(null);
     haptic(20);
     
     const pressure = getPointerPressure(e);
@@ -184,7 +196,7 @@ const TextMultipleChoice = ({
         {orderedOptions.map((option, index) => (
           <button
             key={option.id}
-            className={`text-multiple-choice__option ${isVisible(option.id) ? 'visible' : ''} ${isSelected(option.id) ? 'selected' : ''}`}
+            className={`text-multiple-choice__option ${isVisible(option.id) ? 'visible' : ''} ${isSelected(option.id) ? 'selected' : ''} ${pressedId === option.id ? 'pressed' : ''}`}
             style={{ '--index': index }}
             disabled={!isVisible(option.id) || (!canSelectMore && !isSelected(option.id) && selection === 'multiple')}
             onPointerEnter={(e) => handlePointerEnter(e, option.id)}

@@ -16,8 +16,12 @@
   // Prevent text selection during quiz
   user-select: none;
   -webkit-user-select: none;
-  -webkit-touch-callout: none; // Prevent iOS long-press callouts
-  -webkit-tap-highlight-color: transparent; // No tap flash
+
+  // Prevent iOS callouts (long-press menus)
+  -webkit-touch-callout: none;
+
+  // Prevent tap highlight on buttons
+  -webkit-tap-highlight-color: transparent;
 }
 
 .app__background {
@@ -51,6 +55,9 @@
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.5s ease;
+
+  // Allow natural document scroll - questions stack vertically
+  // Hidden questions have height: 0, so user can only scroll to answered ones
 
   &.visible {
     opacity: 1;
@@ -124,6 +131,7 @@
 
 html {
   scroll-behavior: smooth;
+  font-size: 32px;
 }
 
 body {

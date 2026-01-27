@@ -2,6 +2,7 @@
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
+  touch-action: none; // Prevent scroll while dragging
   
   &__instructions {
     color: rgba(255, 255, 255, 0.7);
@@ -28,6 +29,10 @@
     transition: all 0.3s ease;
     opacity: 0;
     transform: translateX(-20px);
+    position: relative;
+    touch-action: none; // Enable touch dragging
+    -webkit-touch-callout: none;
+    user-select: none;
     
     &.visible {
       opacity: 1;
@@ -42,15 +47,18 @@
     }
     
     &.dragging {
-      opacity: 0.5;
+      opacity: 0.6;
       cursor: grabbing;
       transform: scale(1.02);
       box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+      background: rgba(100, 200, 255, 0.2);
+      border-color: rgba(100, 200, 255, 0.5);
+      z-index: 10;
     }
     
     &.drag-over {
       border-color: rgba(100, 200, 255, 0.8);
-      background: rgba(100, 200, 255, 0.2);
+      background: rgba(100, 200, 255, 0.15);
       
       &::before {
         content: '';

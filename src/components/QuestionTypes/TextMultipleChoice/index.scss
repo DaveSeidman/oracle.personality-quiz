@@ -24,6 +24,9 @@
     transition: all 0.3s ease;
     opacity: 0;
     transform: translateY(20px);
+    touch-action: manipulation; // Faster touch response, no double-tap zoom
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
     
     &.visible {
       opacity: 1;
@@ -32,14 +35,17 @@
       animation-delay: calc(var(--index) * 0.05s);
     }
     
-    &:hover:not(:disabled) {
+    &:hover:not(:disabled):not(.pressed) {
       background: rgba(255, 255, 255, 0.2);
       border-color: rgba(255, 255, 255, 0.4);
       transform: scale(1.02);
     }
     
-    &:active:not(:disabled) {
+    // Use .pressed class instead of :active for proper pointer tracking
+    &.pressed:not(:disabled) {
       transform: scale(0.98);
+      background: rgba(255, 255, 255, 0.25);
+      border-color: rgba(255, 255, 255, 0.5);
     }
     
     &.selected {

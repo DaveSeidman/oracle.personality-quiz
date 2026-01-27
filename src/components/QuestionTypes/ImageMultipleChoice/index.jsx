@@ -15,6 +15,7 @@ const ImageMultipleChoice = ({
   const [visibleOptions, setVisibleOptions] = useState([]);
   const [selectedIds, setSelectedIds] = useState([]);
   const [imagesLoaded, setImagesLoaded] = useState({});
+  const [pressedId, setPressedId] = useState(null); // Track which button is pressed
   const timersRef = useRef([]);
   const optionsShownRef = useRef(false);
   const markOptionsShownRef = useRef(markOptionsShown);
@@ -77,6 +78,7 @@ const ImageMultipleChoice = ({
   
   const handlePointerDown = useCallback((e, optionId) => {
     pressedOptionRef.current = optionId;
+    setPressedId(optionId);
     trackInteraction?.({
       type: 'pointerdown',
       targetId: optionId,
@@ -86,6 +88,11 @@ const ImageMultipleChoice = ({
   }, [trackInteraction]);
   
   const handlePointerLeave = useCallback((e, optionId) => {
+    // Always clear pressed state on leave
+    if (pressedId === optionId) {
+      setPressedId(null);
+    }
+    
     if (pressedOptionRef.current === optionId) {
       trackInteraction?.({
         type: 'pointerleave-while-pressed',
@@ -104,13 +111,15 @@ const ImageMultipleChoice = ({
         data: { x: e.clientX, y: e.clientY },
       });
     }
-  }, [trackInteraction]);
+  }, [trackInteraction, pressedId]);
   
   const handlePointerUp = useCallback((e, optionId) => {
     pressedOptionRef.current = null;
+    setPressedId(null);
   }, []);
   
   const handlePointerCancel = useCallback((e, optionId) => {
+    setPressedId(null);
     if (pressedOptionRef.current === optionId) {
       trackInteraction?.({
         type: 'pointercancel',
@@ -123,6 +132,7 @@ const ImageMultipleChoice = ({
   
   const handleSelect = useCallback((e, optionId) => {
     pressedOptionRef.current = null;
+    setPressedId(null);
     haptic(20);
     
     const pressure = getPointerPressure(e);
@@ -176,7 +186,7 @@ const ImageMultipleChoice = ({
         {orderedOptions.map((option, index) => (
           <button
             key={option.id}
-            className={`image-multiple-choice__option ${isVisible(option.id) ? 'visible' : ''} ${isSelected(option.id) ? 'selected' : ''}`}
+            className={`image-multiple-choice__option ${isVisible(option.id) ? 'visible' : ''} ${isSelected(option.id) ? 'selected' : ''} ${pressedId === option.id ? 'pressed' : ''}`}
             style={{ '--index': index }}
             disabled={!isVisible(option.id) || (!canSelectMore && !isSelected(option.id) && selection === 'multiple')}
             onPointerEnter={(e) => handlePointerEnter(e, option.id)}

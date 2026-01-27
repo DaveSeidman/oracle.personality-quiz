@@ -30,34 +30,34 @@ const App = () => {
   const [fullscreen, setFullscreen] = useState(false);
   const [currentFeedback, setCurrentFeedback] = useState(null);
   const [apiResult, setApiResult] = useState(null);
-
+  
   // Prepared questions with randomized options
   const [preparedQuestions, setPreparedQuestions] = useState([]);
-
+  
   // Analytics hook
   const analytics = useAnalytics();
-
+  
   // Refs
   const questionsRef = useRef(null);
   const backgroundVideoRef = useRef(null);
-
+  
   // Idle timeout hook - reset quiz after inactivity
   useIdleTimeout(IDLE_DELAY, () => {
     if (phase === 'quiz') {
       handleRestart();
     }
   }, phase === 'quiz');
-
+  
   // Handle fullscreen changes
   useEffect(() => {
     const handleFullscreenChange = () => {
       setFullscreen(document.fullscreenElement !== null);
     };
-
+    
     document.addEventListener('fullscreenchange', handleFullscreenChange);
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
   }, []);
-
+  
   // Prevent context menu (long press) during quiz
   useEffect(() => {
     const preventContextMenu = (e) => {
@@ -66,16 +66,16 @@ const App = () => {
         return false;
       }
     };
-
+    
     document.addEventListener('contextmenu', preventContextMenu);
     return () => document.removeEventListener('contextmenu', preventContextMenu);
   }, [phase]);
-
+  
   // Prepare questions with randomized options
   const prepareQuestions = useCallback(() => {
     return questionsData.map(question => {
       const prepared = { ...question };
-
+      
       if (question.randomize && question.options) {
         const shuffled = shuffle([...question.options]);
         prepared.options = shuffled;
@@ -85,17 +85,17 @@ const App = () => {
         prepared.presentationOrder = question.options.map(opt => opt.id);
         prepared.originalOrder = prepared.presentationOrder;
       }
-
+      
       return prepared;
     });
   }, []);
-
+  
   // Start the quiz
   const handleStart = useCallback((startData) => {
     // Prepare fresh questions with randomized options
     const questions = prepareQuestions();
     setPreparedQuestions(questions);
-
+    
     // Reset state
     setRunId(v => v + 1);
     setCurrentQuestionIndex(0);
@@ -103,17 +103,17 @@ const App = () => {
     setPersonality(null);
     setScores({});
     setPhase('quiz');
-
+    
     // Initialize analytics for first question
     analytics.reset();
     analytics.initQuestion(questions[0]);
-
+    
     // Request fullscreen on non-localhost
     if (!fullscreen && location.hostname !== 'localhost') {
       document.documentElement.requestFullscreen?.();
     }
   }, [prepareQuestions, analytics, fullscreen]);
-
+  
   // Restart the quiz
   const handleRestart = useCallback(() => {
     setRunId(v => v + 1);
@@ -124,20 +124,20 @@ const App = () => {
     setPhase('start');
     analytics.reset();
   }, [analytics]);
-
+  
   // Handle answer submission
   const handleAnswer = useCallback((questionIndex, response) => {
     const question = preparedQuestions[questionIndex];
-
+    
     // Finalize current question analytics
     const questionAnalytics = analytics.finalizeQuestion(response);
-
+    
     // Generate micro feedback and display it
     const feedback = generateMicroFeedback(questionAnalytics, question?.type);
     if (feedback && feedback.length > 0) {
       setCurrentFeedback(feedback);
     }
-
+    
     // Store response with analytics
     setResponses(prev => {
       const next = [...prev];
@@ -150,17 +150,17 @@ const App = () => {
       };
       return next;
     });
-
+    
     // Move to next question or finish
     const nextIndex = questionIndex + 1;
-
+    
     if (nextIndex < preparedQuestions.length) {
       setCurrentQuestionIndex(nextIndex);
       analytics.initQuestion(preparedQuestions[nextIndex]);
     } else {
       // Quiz complete - call API immediately
       setPhase('analyzing');
-
+      
       // Build responses array with current response included
       const allResponses = [...responses];
       allResponses[questionIndex] = {
@@ -170,47 +170,47 @@ const App = () => {
         analytics: questionAnalytics,
         feedback,
       };
-
+      
       // Call API right away
       analyzeQuiz(allResponses);
     }
-
+    
     return { feedback };
   }, [preparedQuestions, analytics, responses]);
-
+  
   // Analyze quiz - calls backend API immediately
   const analyzeQuiz = useCallback(async (allResponses) => {
     // Calculate local scores as fallback
     const allAnalytics = allResponses.map(r => r.analytics);
     const calculatedScores = calculateScores(allAnalytics, preparedQuestions, personalitiesData);
-
+    
     // Find local winning personality (fallback)
     let maxScore = -Infinity;
     let winningPersonality = null;
-
+    
     Object.entries(calculatedScores).forEach(([id, score]) => {
       if (score > maxScore) {
         maxScore = score;
         winningPersonality = personalitiesData.find(p => p.id === id);
       }
     });
-
+    
     // Build API payload
     const apiPayload = buildApiPayload(allResponses, preparedQuestions, personalitiesData, calculatedScores);
     console.log('Sending to API:', apiPayload);
-
+    
     try {
       const res = await fetch(`${API_BASE_URL}/api/quiz/analyze`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(apiPayload),
       });
-
+      
       if (res.ok) {
         const data = await res.json();
         console.log('API Response:', data);
         setApiResult(data);
-
+        
         if (data.ok && data.personalityId) {
           // Use API-determined personality
           const apiPersonality = personalitiesData.find(p => p.id === data.personalityId);
@@ -222,13 +222,13 @@ const App = () => {
     } catch (err) {
       console.warn('API call failed, using local scoring:', err);
     }
-
+    
     // Set results and show immediately
     setScores(calculatedScores);
     setPersonality(winningPersonality);
     setPhase('results');
   }, [preparedQuestions]);
-
+  
   // Build payload for backend API
   const buildApiPayload = (responses, questions, personalities, scores) => {
     return {
@@ -241,7 +241,7 @@ const App = () => {
         const q = questions[idx];
         const analytics = r.analytics || {};
         const timing = analytics.timing || {};
-
+        
         // Map frontend question types to backend types
         const typeMap = {
           'text-multiple-choice': 'multiple_choice',
@@ -251,19 +251,19 @@ const App = () => {
           'range': 'slider',
           'free-response': 'text',
         };
-
+        
         const mappedType = typeMap[q.type] || q.type;
-
+        
         const baseQuestion = {
           id: q.id,
           type: mappedType,
         };
-
+        
         // Only add timing fields if they have valid values
         if (timing.questionShownAt) baseQuestion.startedAtMs = Math.round(timing.questionShownAt);
         if (timing.completedAt) baseQuestion.answeredAtMs = Math.round(timing.completedAt);
         if (timing.responseTime) baseQuestion.delayMs = Math.round(timing.responseTime);
-
+        
         // Add type-specific data
         switch (q.type) {
           case 'text-multiple-choice':
@@ -307,7 +307,7 @@ const App = () => {
             const numericValues = Object.entries(responseObj)
               .filter(([key, val]) => typeof val === 'number')
               .reduce((acc, [key, val]) => ({ ...acc, [key]: val }), {});
-
+            
             const firstValue = Object.values(numericValues)[0];
             if (typeof firstValue === 'number') {
               // Normalize based on typical 1-10 range to 0-1
@@ -335,7 +335,7 @@ const App = () => {
       }),
     };
   };
-
+  
   // Helper: build hover time map from interactions
   const buildHoverMap = (interactions = []) => {
     const hovers = {};
@@ -346,7 +346,7 @@ const App = () => {
       });
     return Object.keys(hovers).length > 0 ? hovers : null;
   };
-
+  
   // Helper: count slider reversals
   const countReversals = (sliderData = {}) => {
     let reversals = 0;
@@ -362,22 +362,22 @@ const App = () => {
     });
     return reversals;
   };
-
+  
   // Track interactions
   const handleInteraction = useCallback((questionIndex, interaction) => {
     analytics.trackInteraction(interaction);
   }, [analytics]);
-
+  
   // Mark when options are shown
   const handleMarkOptionsShown = useCallback((questionIndex) => {
     analytics.markOptionsShown();
   }, [analytics]);
-
+  
   // Get all analytics for results display
   const allAnalytics = useMemo(() => {
     return responses.map(r => r.analytics).filter(Boolean);
   }, [responses]);
-
+  
   return (
     <div className="app">
       {/* Background Video */}
@@ -392,7 +392,7 @@ const App = () => {
         /> */}
         <div className="app__background-fallback" />
       </div>
-
+      
       {/* Start Screen */}
       <StartScreen
         isVisible={phase === 'start'}
@@ -401,9 +401,9 @@ const App = () => {
         title="Discover Your AI Personality"
         subtitle="Answer a few questions to discover which AI approach matches your style"
       />
-
+      
       {/* Questions */}
-      <div
+      <div 
         className={`app__questions ${phase === 'quiz' ? 'visible' : ''}`}
         ref={questionsRef}
       >
@@ -424,15 +424,15 @@ const App = () => {
           />
         ))}
       </div>
-
+      
       {/* Micro Feedback Overlay */}
       {phase === 'quiz' && (
-        <MicroFeedback
+        <MicroFeedback 
           feedback={currentFeedback}
           onComplete={() => setCurrentFeedback(null)}
         />
       )}
-
+      
       {/* Loading indicator while analyzing */}
       {phase === 'analyzing' && (
         <div className="app__loading">
@@ -440,7 +440,7 @@ const App = () => {
           <p>Analyzing responses...</p>
         </div>
       )}
-
+      
       {/* Results */}
       <Results
         isVisible={phase === 'results'}
@@ -449,7 +449,7 @@ const App = () => {
         allAnalytics={allAnalytics}
         onRestart={handleRestart}
       />
-
+      
       {/* Logo (always visible) */}
       {/* <img className="app__logo" src={logo} alt="Logo" /> */}
     </div>

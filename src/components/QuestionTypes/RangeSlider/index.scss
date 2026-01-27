@@ -96,6 +96,7 @@
     flex: 1;
     position: relative;
     height: 50px;
+    touch-action: none; // Prevent scroll interference during slider drag
   }
   
   &__track {
@@ -156,6 +157,7 @@
     cursor: pointer;
     -webkit-appearance: none;
     appearance: none;
+    touch-action: none; // Prevent scroll interference - critical for smooth sliding
     
     &::-webkit-slider-thumb {
       -webkit-appearance: none;

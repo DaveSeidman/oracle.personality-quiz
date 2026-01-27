@@ -17,8 +17,11 @@ const SlideOption = ({
   const [sliderValue, setSliderValue] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const sliderRef = useRef(null);
+  const thumbRef = useRef(null);
+  const fillRef = useRef(null);
   const startTimeRef = useRef(null);
   const startXRef = useRef(null);
+  const currentValueRef = useRef(0); // Track value without re-renders
   
   const handlePointerDown = useCallback((e) => {
     if (isDisabled || isSelected) return;
@@ -27,6 +30,7 @@ const SlideOption = ({
     setIsDragging(true);
     startTimeRef.current = performance.now();
     startXRef.current = e.clientX;
+    currentValueRef.current = 0;
     
     trackInteraction?.({
       type: 'slider-start',
@@ -46,26 +50,43 @@ const SlideOption = ({
     const x = e.clientX - rect.left;
     const percentage = Math.max(0, Math.min(1, x / rect.width));
     
-    setSliderValue(percentage);
-    trackSliderChange?.(option.id, percentage, sliderValue);
+    // Direct DOM manipulation for immediate response (no React re-render)
+    if (thumbRef.current) {
+      thumbRef.current.style.left = `${percentage * 100}%`;
+    }
+    if (fillRef.current) {
+      fillRef.current.style.width = `${percentage * 100}%`;
+    }
+    
+    // Update icon if crossing threshold
+    if (thumbRef.current) {
+      const icon = thumbRef.current.querySelector('.slide-option__thumb-icon');
+      if (icon) {
+        icon.textContent = percentage >= SLIDER_THRESHOLD ? '✓' : '→';
+      }
+    }
     
     // Light haptic at threshold
-    if (percentage >= SLIDER_THRESHOLD && sliderValue < SLIDER_THRESHOLD) {
+    if (percentage >= SLIDER_THRESHOLD && currentValueRef.current < SLIDER_THRESHOLD) {
       haptic(10);
     }
-  }, [isDragging, option.id, sliderValue, trackSliderChange]);
+    
+    trackSliderChange?.(option.id, percentage, currentValueRef.current);
+    currentValueRef.current = percentage;
+  }, [isDragging, option.id, trackSliderChange]);
   
   const handlePointerUp = useCallback((e) => {
     if (!isDragging) return;
     
     const duration = startTimeRef.current ? performance.now() - startTimeRef.current : 0;
+    const finalValue = currentValueRef.current;
     
     trackInteraction?.({
       type: 'slider-end',
       targetId: option.id,
       pressure: getPointerPressure(e),
       data: { 
-        finalValue: sliderValue,
+        finalValue,
         duration,
         distance: e.clientX - (startXRef.current || 0),
       },
@@ -73,16 +94,24 @@ const SlideOption = ({
     
     setIsDragging(false);
     
-    if (sliderValue >= SLIDER_THRESHOLD) {
+    if (finalValue >= SLIDER_THRESHOLD) {
       haptic(30);
+      setSliderValue(1); // Sync React state
       onSelect?.(option.id, duration);
     } else {
-      // Reset slider with animation
+      // Reset slider - now transitions will animate
       setSliderValue(0);
+      currentValueRef.current = 0;
+      if (thumbRef.current) {
+        thumbRef.current.style.left = '0%';
+      }
+      if (fillRef.current) {
+        fillRef.current.style.width = '0%';
+      }
     }
     
     e.target.releasePointerCapture?.(e.pointerId);
-  }, [isDragging, sliderValue, option.id, onSelect, trackInteraction]);
+  }, [isDragging, option.id, onSelect, trackInteraction]);
   
   const handlePointerEnter = useCallback((e) => {
     trackInteraction?.({
@@ -107,10 +136,12 @@ const SlideOption = ({
         onPointerCancel={handlePointerUp}
       >
         <div 
+          ref={fillRef}
           className="slide-option__fill"
           style={{ width: `${sliderValue * 100}%` }}
         />
         <div 
+          ref={thumbRef}
           className="slide-option__thumb"
           style={{ left: `${sliderValue * 100}%` }}
         >
