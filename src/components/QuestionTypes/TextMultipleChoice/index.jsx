@@ -197,7 +197,7 @@ const TextMultipleChoice = ({
           <button
             key={option.id}
             className={`text-multiple-choice__option ${isVisible(option.id) ? 'visible' : ''} ${isSelected(option.id) ? 'selected' : ''} ${pressedId === option.id ? 'pressed' : ''}`}
-            style={{ '--index': index }}
+            style={{ '--index': index, opacity: isVisible(option.id) ? undefined : 0 }}
             disabled={!isVisible(option.id) || (!canSelectMore && !isSelected(option.id) && selection === 'multiple')}
             onPointerEnter={(e) => handlePointerEnter(e, option.id)}
             onPointerDown={(e) => handlePointerDown(e, option.id)}

@@ -4,95 +4,73 @@
   gap: 1.5rem;
   opacity: 0;
   transform: translateY(20px);
-  transition: all 0.4s ease;
-  
+
   &.visible {
-    opacity: 1;
-    transform: translateY(0);
+    animation: freeResponseFadeIn 0.4s ease forwards;
   }
-  
+
   &__input-wrapper {
     position: relative;
     background: rgba(255, 255, 255, 0.1);
     border: 2px solid rgba(255, 255, 255, 0.2);
     border-radius: 12px;
-    transition: all 0.3s ease;
-    
+
     &.focused {
-      border-color: rgba(100, 200, 255, 0.6);
-      background: rgba(255, 255, 255, 0.15);
-      box-shadow: 0 0 20px rgba(100, 200, 255, 0.2);
+      border-color: rgba(79, 172, 254, 0.6);
+      box-shadow: 0 0 20px rgba(79, 172, 254, 0.1);
     }
   }
-  
+
   &__textarea {
     width: 100%;
+    min-height: 150px;
     padding: 1.25rem;
     background: transparent;
     border: none;
     color: white;
     font-size: 1.1rem;
-    line-height: 1.6;
-    resize: none;
-    outline: none;
     font-family: inherit;
-    
+    line-height: 1.6;
+    resize: vertical;
+
     &::placeholder {
       color: rgba(255, 255, 255, 0.4);
     }
-    
-    // Hide scrollbar but keep functionality
-    scrollbar-width: thin;
-    scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
-    
-    &::-webkit-scrollbar {
-      width: 6px;
-    }
-    
-    &::-webkit-scrollbar-track {
-      background: transparent;
-    }
-    
-    &::-webkit-scrollbar-thumb {
-      background: rgba(255, 255, 255, 0.3);
-      border-radius: 3px;
+
+    &:focus {
+      outline: none;
     }
   }
-  
+
+  &__counter {
+    position: absolute;
+    bottom: 8px;
+    right: 12px;
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 0.75rem;
+
+    &.warning {
+      color: #fbbf24;
+    }
+
+    &.error {
+      color: #f87171;
+    }
+  }
+
   &__footer {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0.75rem 1.25rem;
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
   }
-  
-  &__char-count {
-    font-size: 0.8rem;
-    color: rgba(255, 255, 255, 0.5);
-    transition: color 0.2s ease;
-    
-    &.warning {
-      color: rgba(255, 200, 100, 0.8);
-    }
-    
-    &.limit {
-      color: rgba(255, 100, 100, 0.8);
-    }
-  }
-  
-  &__min-hint {
-    margin-left: 0.5rem;
-    font-style: italic;
-  }
-  
+
   &__hint {
-    font-size: 0.75rem;
-    color: rgba(255, 255, 255, 0.4);
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 0.875rem;
   }
-  
+
   &__submit {
-    padding: 1rem 2rem;
+    padding: 1rem 2.5rem;
     background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
     border: none;
     border-radius: 12px;
@@ -100,21 +78,25 @@
     font-size: 1.1rem;
     font-weight: 600;
     cursor: pointer;
-    transition: all 0.3s ease;
-    
-    &:hover:not(:disabled) {
-      transform: scale(1.02);
-      box-shadow: 0 6px 25px rgba(79, 172, 254, 0.4);
-    }
-    
+
     &:active:not(:disabled) {
       transform: scale(0.98);
     }
-    
+
     &:disabled {
       opacity: 0.5;
       cursor: not-allowed;
-      background: linear-gradient(135deg, #666 0%, #888 100%);
     }
+  }
+}
+
+@keyframes freeResponseFadeIn {
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
   }
 }

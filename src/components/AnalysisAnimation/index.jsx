@@ -12,9 +12,9 @@ const ANALYSIS_PHASES = [
   { text: 'Generating personality profile...', duration: 2000 },
 ];
 
-const AnalysisAnimation = ({
-  isActive,
-  videoSrc,
+const AnalysisAnimation = ({ 
+  isActive, 
+  videoSrc, 
   onComplete,
   duration = 10000, // Total animation duration
 }) => {
@@ -23,11 +23,11 @@ const AnalysisAnimation = ({
   const [dataPoints, setDataPoints] = useState([]);
   const videoRef = useRef(null);
   const containerRef = useRef(null);
-
+  
   // Generate random data points for visualization
   useEffect(() => {
     if (!isActive) return;
-
+    
     const points = [];
     for (let i = 0; i < 50; i++) {
       points.push({
@@ -40,14 +40,14 @@ const AnalysisAnimation = ({
     }
     setDataPoints(points);
   }, [isActive]);
-
+  
   // Cycle through analysis phases
   useEffect(() => {
     if (!isActive) {
       setCurrentPhase(0);
       return;
     }
-
+    
     let phaseIndex = 0;
     const advancePhase = () => {
       if (phaseIndex < ANALYSIS_PHASES.length - 1) {
@@ -55,10 +55,10 @@ const AnalysisAnimation = ({
         setCurrentPhase(phaseIndex);
       }
     };
-
+    
     const intervals = [];
     let elapsed = 0;
-
+    
     ANALYSIS_PHASES.forEach((phase, index) => {
       if (index > 0) {
         const timer = setTimeout(() => {
@@ -68,41 +68,41 @@ const AnalysisAnimation = ({
       }
       elapsed += phase.duration;
     });
-
+    
     return () => {
       intervals.forEach(t => clearTimeout(t));
     };
   }, [isActive]);
-
+  
   // Progress bar animation
   useEffect(() => {
     if (!isActive) {
       setProgress(0);
       return;
     }
-
+    
     const startTime = performance.now();
     let animationFrame;
-
+    
     const updateProgress = () => {
       const elapsed = performance.now() - startTime;
       const newProgress = Math.min(100, (elapsed / duration) * 100);
       setProgress(newProgress);
-
+      
       if (newProgress < 100) {
         animationFrame = requestAnimationFrame(updateProgress);
       } else {
         onComplete?.();
       }
     };
-
+    
     animationFrame = requestAnimationFrame(updateProgress);
-
+    
     return () => {
       if (animationFrame) cancelAnimationFrame(animationFrame);
     };
   }, [isActive, duration, onComplete]);
-
+  
   // Play video when active
   useEffect(() => {
     if (videoRef.current) {
@@ -114,9 +114,9 @@ const AnalysisAnimation = ({
       }
     }
   }, [isActive]);
-
+  
   if (!isActive) return null;
-
+  
   return (
     <div className="analysis-animation" ref={containerRef}>
       {/* Background video */}
@@ -130,7 +130,7 @@ const AnalysisAnimation = ({
           playsInline
         />
       )}
-
+      
       {/* Fallback animated background if no video */}
       {!videoSrc && (
         <div className="analysis-animation__fallback">
@@ -165,7 +165,7 @@ const AnalysisAnimation = ({
               );
             })}
           </svg>
-
+          
           {/* Pulsing rings */}
           <div className="analysis-animation__rings">
             <div className="analysis-animation__ring" style={{ '--delay': '0s' }} />
@@ -174,22 +174,22 @@ const AnalysisAnimation = ({
           </div>
         </div>
       )}
-
+      
       {/* Content overlay */}
       <div className="analysis-animation__content">
         <h2 className="analysis-animation__title">
           Analyzing Your Responses
         </h2>
-
+        
         <div className="analysis-animation__phase">
           <span className="analysis-animation__phase-text">
             {ANALYSIS_PHASES[currentPhase]?.text}
           </span>
         </div>
-
+        
         <div className="analysis-animation__progress">
           <div className="analysis-animation__progress-track">
-            <div
+            <div 
               className="analysis-animation__progress-fill"
               style={{ width: `${progress}%` }}
             />
@@ -198,11 +198,11 @@ const AnalysisAnimation = ({
             {Math.round(progress)}%
           </span>
         </div>
-
+        
         {/* Data stream visualization */}
         <div className="analysis-animation__stream">
           {Array.from({ length: 8 }).map((_, i) => (
-            <div
+            <div 
               key={i}
               className="analysis-animation__stream-line"
               style={{ '--index': i }}

@@ -8,7 +8,6 @@ import {
   RangeSlider, 
   FreeResponse 
 } from '../QuestionTypes';
-import MicroFeedback from '../MicroFeedback';
 import './index.scss';
 
 const QUESTION_TYPE_MAP = {
@@ -26,9 +25,14 @@ const Question = ({
   currentQuestionIndex,
   isActive,
   isAnswered,
+  isLocked,
+  isRevising,
+  shouldHide,
   runId,
   analytics,
   onAnswer,
+  onBack,
+  onChangeAnswer,
   onInteraction,
   onMarkOptionsShown,
   typeSpeed = 50,
@@ -36,7 +40,6 @@ const Question = ({
 }) => {
   const [showOptions, setShowOptions] = useState(false);
   const [questionTyped, setQuestionTyped] = useState(false);
-  const [microFeedback, setMicroFeedback] = useState(null);
   const containerRef = useRef(null);
   const optionsTimerRef = useRef(null);
   
@@ -52,11 +55,16 @@ const Question = ({
     question.statements?.map(s => s.id) || 
     [];
   
+  // Show back button if not on first question and (question is active OR viewing locked)
+  const canGoBack = questionIndex > 0 && (isActive || (isLocked && questionIndex === currentQuestionIndex));
+  
+  // Show "Change Answer" button if viewing a locked question (went back but haven't clicked change)
+  const showChangeAnswerButton = isLocked && questionIndex === currentQuestionIndex;
+  
   // Reset state when runId changes (quiz restart)
   useEffect(() => {
     setShowOptions(false);
     setQuestionTyped(false);
-    setMicroFeedback(null);
     
     if (optionsTimerRef.current) {
       clearTimeout(optionsTimerRef.current);
@@ -94,18 +102,14 @@ const Question = ({
   
   // Handle question completion (from question type component)
   const handleComplete = useCallback((response) => {
-    // Get feedback from response if handleAnswer returns it
-    const result = onAnswer?.(response);
-    
-    if (result?.feedback) {
-      setMicroFeedback(result.feedback);
-    }
+    // Just pass response to parent - App handles feedback
+    onAnswer?.(response);
   }, [onAnswer]);
   
-  // Handle clearing micro feedback
-  const handleFeedbackComplete = useCallback(() => {
-    setMicroFeedback(null);
-  }, []);
+  // Handle back button click
+  const handleBack = useCallback(() => {
+    onBack?.();
+  }, [onBack]);
   
   // Handle typing complete
   const handleTypingComplete = useCallback(() => {
@@ -155,36 +159,60 @@ const Question = ({
   }
   
   // Determine visibility class
-  const visibilityClass = isActive ? 'active' : isAnswered ? 'answered' : 'hidden';
+  let visibilityClass = 'hidden';
+  if (shouldHide) {
+    visibilityClass = 'hidden';
+  } else if (isActive && !isLocked) {
+    visibilityClass = 'active';
+  } else if (isLocked && questionIndex === currentQuestionIndex) {
+    visibilityClass = 'viewing-locked'; // Viewing a locked question (can click "Change Answer")
+  } else if (isAnswered || isLocked) {
+    visibilityClass = 'answered';
+  }
+  
+  // Additional class for locked state
+  const lockedClass = isLocked ? 'question--locked' : '';
   
   return (
     <div 
       ref={containerRef}
-      className={`question question--${visibilityClass}`}
+      className={`question question--${visibilityClass} ${lockedClass}`}
       data-question-id={question.id}
       data-question-index={questionIndex}
     >
+      {/* Back Button - shows on active questions (after options load) or locked questions (immediately) */}
+      {canGoBack && (showOptions || isLocked) && (
+        <button 
+          className="question__back"
+          onClick={handleBack}
+          aria-label="Go back to previous question"
+        >
+          ← Back
+        </button>
+      )}
+      
       {/* Question Text */}
       <h1 className="question__text">
-        {isActive && !isAnswered && (
+        {isActive && !isAnswered && !isLocked && (
           <TypeAnimation
             sequence={[question.text, handleTypingComplete]}
             speed={typeSpeed}
             cursor={false}
           />
         )}
-        {(isAnswered || !isActive) && (
+        {(isAnswered || !isActive || isLocked) && (
           <span>{question.text}</span>
         )}
       </h1>
       
       {/* Question Component (options, slider, etc.) */}
-      <div className={`question__content ${showOptions || isAnswered ? 'visible' : ''}`}>
+      <div className={`question__content ${showOptions || isAnswered || isLocked ? 'visible' : ''} ${isLocked ? 'locked' : ''}`}>
         <QuestionComponent
-          key={`${runId}-${question.id}`}
+          key={`${runId}-${question.id}${isRevising ? '-revising' : ''}`}
           question={question}
           presentationOrder={presentationOrder}
-          isActive={isActive && showOptions}
+          isActive={(isActive && showOptions && !isLocked) || isRevising}
+          isLocked={isLocked}
           onComplete={handleComplete}
           trackInteraction={handleTrackInteraction}
           trackSelection={handleTrackSelection}
@@ -196,13 +224,17 @@ const Question = ({
           questionSpeed={typeSpeed}
           answerSpeed={answerSpeed}
         />
+        
+        {/* Change Answer Button - shows when viewing a locked question */}
+        {showChangeAnswerButton && (
+          <button 
+            className="question__change-answer"
+            onClick={onChangeAnswer}
+          >
+            Change Answer
+          </button>
+        )}
       </div>
-      
-      {/* Micro Feedback */}
-      <MicroFeedback 
-        feedback={microFeedback}
-        onComplete={handleFeedbackComplete}
-      />
     </div>
   );
 };

@@ -1,108 +1,78 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import './index.scss';
 
-const FeedbackMessage = ({ message, onComplete }) => {
-  const [isVisible, setIsVisible] = useState(false);
-  const [isExiting, setIsExiting] = useState(false);
-  
-  useEffect(() => {
-    // Fade in
-    const showTimer = setTimeout(() => setIsVisible(true), 50);
-    
-    // Start exit
-    const exitTimer = setTimeout(() => setIsExiting(true), 2500);
-    
-    // Complete and remove
-    const completeTimer = setTimeout(() => {
-      onComplete?.();
-    }, 3000);
-    
-    return () => {
-      clearTimeout(showTimer);
-      clearTimeout(exitTimer);
-      clearTimeout(completeTimer);
-    };
-  }, [onComplete]);
-  
-  const getImpactClass = () => {
-    switch (message.impact) {
-      case 'positive': return 'positive';
-      case 'negative': return 'negative';
-      default: return 'neutral';
-    }
-  };
-  
-  const getIcon = () => {
-    switch (message.type) {
-      case 'confidence': return '✓';
-      case 'deliberation': return '◷';
-      case 'exploration': return '⟲';
-      case 'pressure': return '◉';
-      case 'slider-speed': return '→';
-      case 'slider-hesitation': return '⋯';
-      case 'reordering': return '↕';
-      case 'hesitation': return '?';
-      case 'range-adjustment': return '≈';
-      case 'editing': return '✎';
-      case 'pauses': return '⏸';
-      case 'selection-order': return '#';
-      default: return '•';
-    }
-  };
-  
-  return (
-    <div className={`feedback-message ${isVisible ? 'visible' : ''} ${isExiting ? 'exiting' : ''} ${getImpactClass()}`}>
-      <span className="feedback-message__icon">{getIcon()}</span>
-      <span className="feedback-message__text">{message.text}</span>
-    </div>
-  );
-};
-
 const MicroFeedback = ({ feedback, onComplete }) => {
-  const [displayMessages, setDisplayMessages] = useState([]);
-  const messageIdRef = useRef(0);
-  const lastFeedbackRef = useRef(null);
+  const [log, setLog] = useState([]);
+  const logRef = useRef(null);
+  const processedRef = useRef(new Set());
   
-  // Process new feedback only when it actually changes
+  // Add new feedback to log
   useEffect(() => {
-    // Skip if no feedback or same feedback array reference
-    if (!feedback || feedback === lastFeedbackRef.current) return;
+    if (!feedback || feedback.length === 0) return;
     
-    // Skip if feedback is empty array
-    if (Array.isArray(feedback) && feedback.length === 0) return;
+    // Create a unique key for this feedback batch
+    const feedbackKey = JSON.stringify(feedback);
     
-    // Mark this feedback as processed
-    lastFeedbackRef.current = feedback;
+    // Skip if we've already processed this exact feedback
+    if (processedRef.current.has(feedbackKey)) return;
+    processedRef.current.add(feedbackKey);
     
-    // Add new messages
-    const newMessages = (Array.isArray(feedback) ? feedback : [feedback])
-      .filter(m => m && m.text)
-      .map(m => ({
-        ...m,
-        id: ++messageIdRef.current,
-      }));
+    const timestamp = new Date().toLocaleTimeString('en-US', { 
+      hour12: false, 
+      hour: '2-digit', 
+      minute: '2-digit', 
+      second: '2-digit' 
+    });
     
-    if (newMessages.length > 0) {
-      setDisplayMessages(prev => [...prev, ...newMessages].slice(-3)); // Keep max 3
+    // Add each feedback item to the log
+    const newEntries = feedback.map((item, idx) => ({
+      id: `${Date.now()}-${idx}`,
+      timestamp,
+      text: item.text,
+      type: item.type || 'info',
+      impact: item.impact || 'neutral',
+    }));
+    
+    setLog(prev => [...prev, ...newEntries]);
+    
+    // Call onComplete after a short delay
+    const timer = setTimeout(() => {
+      onComplete?.();
+    }, 100);
+    
+    return () => clearTimeout(timer);
+  }, [feedback, onComplete]);
+  
+  // Auto-scroll to bottom when new entries added
+  useEffect(() => {
+    if (logRef.current) {
+      logRef.current.scrollTop = logRef.current.scrollHeight;
     }
-  }, [feedback]);
+  }, [log]);
   
-  const handleMessageComplete = useCallback((messageId) => {
-    setDisplayMessages(prev => prev.filter(m => m.id !== messageId));
-    onComplete?.();
-  }, [onComplete]);
-  
-  if (displayMessages.length === 0) return null;
+  // Don't render if no log entries
+  if (log.length === 0) return null;
   
   return (
-    <div className="micro-feedback">
-      {displayMessages.map((message) => (
-        <FeedbackMessage
-          key={message.id}
-          message={message}
-          onComplete={() => handleMessageComplete(message.id)}
-        />
-      ))}
+    <div className="micro-feedback-terminal">
+      <div className="micro-feedback-terminal__header">
+        <span className="micro-feedback-terminal__dot micro-feedback-terminal__dot--red" />
+        <span className="micro-feedback-terminal__dot micro-feedback-terminal__dot--yellow" />
+        <span className="micro-feedback-terminal__dot micro-feedback-terminal__dot--green" />
+        <span className="micro-feedback-terminal__title">behavioral_analysis.log</span>
+      </div>
+      <div className="micro-feedback-terminal__body" ref={logRef}>
+        {log.map((entry) => (
+          <div 
+            key={entry.id} 
+            className={`micro-feedback-terminal__entry micro-feedback-terminal__entry--${entry.impact}`}
+          >
+            <span className="micro-feedback-terminal__timestamp">[{entry.timestamp}]</span>
+            <span className="micro-feedback-terminal__text">{entry.text}</span>
+          </div>
+        ))}
+        <div className="micro-feedback-terminal__cursor">_</div>
+      </div>
     </div>
   );
 };

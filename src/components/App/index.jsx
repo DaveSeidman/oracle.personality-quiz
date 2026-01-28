@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import StartScreen from '../StartScreen';
 import Question from '../Question';
 import MicroFeedback from '../MicroFeedback';
+import AnalysisAnimation from '../AnalysisAnimation';
 import Results from '../Results';
 import { useAnalytics, useIdleTimeout } from '../../hooks';
 import { shuffle } from '../../utils';
@@ -18,11 +19,12 @@ import './index.scss';
 const IDLE_DELAY = 45000; // 45 seconds
 const TYPE_SPEED = 50;
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const ANALYSIS_DURATION = 8000; // Minimum animation duration
 
 const App = () => {
   // Core state
   const [runId, setRunId] = useState(0);
-  const [phase, setPhase] = useState('start'); // 'start' | 'quiz' | 'analyzing' | 'results'
+  const [phase, setPhase] = useState('start'); // 'start' | 'quiz' | 'confirm' | 'analyzing' | 'results'
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(-1);
   const [responses, setResponses] = useState([]);
   const [personality, setPersonality] = useState(null);
@@ -30,6 +32,13 @@ const App = () => {
   const [fullscreen, setFullscreen] = useState(false);
   const [currentFeedback, setCurrentFeedback] = useState(null);
   const [apiResult, setApiResult] = useState(null);
+  const [backNavigations, setBackNavigations] = useState([]); // Track back navigation events
+  const [revisingQuestionIndex, setRevisingQuestionIndex] = useState(null); // Track if user is revising a question
+  
+  // Analysis completion tracking
+  const [animationComplete, setAnimationComplete] = useState(false);
+  const [apiComplete, setApiComplete] = useState(false);
+  const pendingResultsRef = useRef(null);
   
   // Prepared questions with randomized options
   const [preparedQuestions, setPreparedQuestions] = useState([]);
@@ -121,6 +130,8 @@ const App = () => {
     setResponses([]);
     setPersonality(null);
     setScores({});
+    setBackNavigations([]);
+    setRevisingQuestionIndex(null);
     setPhase('start');
     analytics.reset();
   }, [analytics]);
@@ -151,34 +162,108 @@ const App = () => {
       return next;
     });
     
-    // Move to next question or finish
+    // Clear revising state if we were revising
+    setRevisingQuestionIndex(null);
+    
+    // Move to next question or go to confirmation
     const nextIndex = questionIndex + 1;
     
     if (nextIndex < preparedQuestions.length) {
       setCurrentQuestionIndex(nextIndex);
       analytics.initQuestion(preparedQuestions[nextIndex]);
     } else {
-      // Quiz complete - call API immediately
-      setPhase('analyzing');
-      
-      // Build responses array with current response included
-      const allResponses = [...responses];
-      allResponses[questionIndex] = {
-        questionId: question.id,
-        questionType: question.type,
-        response,
-        analytics: questionAnalytics,
-        feedback,
-      };
-      
-      // Call API right away
-      analyzeQuiz(allResponses);
+      // Quiz complete - go to confirmation screen (user can still go back)
+      setPhase('confirm');
+      setCurrentQuestionIndex(preparedQuestions.length); // Past the last question
     }
     
     return { feedback };
-  }, [preparedQuestions, analytics, responses]);
+  }, [preparedQuestions, analytics]);
   
-  // Analyze quiz - calls backend API immediately
+  // Handle back navigation (from quiz or confirm phase)
+  const handleBack = useCallback(() => {
+    // From confirm phase, go back to last question
+    if (phase === 'confirm') {
+      const lastIndex = preparedQuestions.length - 1;
+      setPhase('quiz');
+      setCurrentQuestionIndex(lastIndex);
+      
+      // Track back navigation
+      setBackNavigations(prev => [...prev, {
+        timestamp: Date.now(),
+        fromPhase: 'confirm',
+        toQuestionIndex: lastIndex,
+        toQuestionId: preparedQuestions[lastIndex]?.id,
+      }]);
+      
+      setCurrentFeedback([{
+        type: 'back-navigation',
+        text: 'Revisiting previous response — increasing uncertainty coefficient',
+        impact: 'negative',
+      }]);
+      return;
+    }
+    
+    // From quiz phase
+    if (currentQuestionIndex <= 0) return;
+    
+    const prevIndex = currentQuestionIndex - 1;
+    const fromQuestion = preparedQuestions[currentQuestionIndex];
+    const toQuestion = preparedQuestions[prevIndex];
+    
+    // Track this back navigation
+    const backEvent = {
+      timestamp: Date.now(),
+      fromQuestionIndex: currentQuestionIndex,
+      fromQuestionId: fromQuestion?.id,
+      toQuestionIndex: prevIndex,
+      toQuestionId: toQuestion?.id,
+    };
+    
+    setBackNavigations(prev => [...prev, backEvent]);
+    
+    // Show micro-feedback for going back
+    setCurrentFeedback([{
+      type: 'back-navigation',
+      text: 'Revisiting previous response — increasing uncertainty coefficient',
+      impact: 'negative',
+    }]);
+    
+    // Go back (but don't clear the response yet - user must click "Change Answer")
+    setCurrentQuestionIndex(prevIndex);
+    
+  }, [phase, currentQuestionIndex, preparedQuestions]);
+  
+  // Handle "Change Answer" button click - user wants to revise their answer
+  const handleChangeAnswer = useCallback((questionIndex) => {
+    const question = preparedQuestions[questionIndex];
+    
+    // Mark this question as being revised
+    setRevisingQuestionIndex(questionIndex);
+    
+    // Mark the response as revised (but keep original for reference)
+    setResponses(prev => {
+      const next = [...prev];
+      if (next[questionIndex]) {
+        next[questionIndex] = {
+          ...next[questionIndex],
+          wasRevised: true,
+          originalResponse: next[questionIndex].originalResponse || next[questionIndex].response,
+          originalAnalytics: next[questionIndex].originalAnalytics || next[questionIndex].analytics,
+          // Clear current response so they can re-answer
+          response: null,
+          analytics: null,
+        };
+      }
+      return next;
+    });
+    
+    // Re-init analytics for this question
+    analytics.initQuestion(question);
+    
+  }, [preparedQuestions, analytics]);
+  
+  // Analyze quiz - calls backend API (runs in parallel with animation)
   const analyzeQuiz = useCallback(async (allResponses) => {
     // Calculate local scores as fallback
     const allAnalytics = allResponses.map(r => r.analytics);
@@ -195,8 +280,8 @@ const App = () => {
       }
     });
     
-    // Build API payload
-    const apiPayload = buildApiPayload(allResponses, preparedQuestions, personalitiesData, calculatedScores);
+    // Build API payload (include back navigation data)
+    const apiPayload = buildApiPayload(allResponses, preparedQuestions, personalitiesData, calculatedScores, backNavigations);
     console.log('Sending to API:', apiPayload);
     
     try {
@@ -223,20 +308,53 @@ const App = () => {
       console.warn('API call failed, using local scoring:', err);
     }
     
-    // Set results and show immediately
-    setScores(calculatedScores);
-    setPersonality(winningPersonality);
-    setPhase('results');
-  }, [preparedQuestions]);
+    // Store results for when animation completes
+    pendingResultsRef.current = {
+      scores: calculatedScores,
+      personality: winningPersonality,
+    };
+    setApiComplete(true);
+  }, [preparedQuestions, backNavigations]);
+  
+  // Handle "Start Analysis" button from confirm screen
+  const handleConfirmAnalysis = useCallback(() => {
+    setPhase('analyzing');
+    setAnimationComplete(false);
+    setApiComplete(false);
+    pendingResultsRef.current = null;
+    
+    // Call API with current responses
+    analyzeQuiz(responses);
+  }, [responses, analyzeQuiz]);
+  
+  // Transition to results when both animation and API are complete
+  useEffect(() => {
+    if (phase === 'analyzing' && animationComplete && apiComplete && pendingResultsRef.current) {
+      const { scores: finalScores, personality: finalPersonality } = pendingResultsRef.current;
+      setScores(finalScores);
+      setPersonality(finalPersonality);
+      setPhase('results');
+    }
+  }, [phase, animationComplete, apiComplete]);
+  
+  // Handle animation complete
+  const handleAnalysisAnimationComplete = useCallback(() => {
+    setAnimationComplete(true);
+  }, []);
   
   // Build payload for backend API
-  const buildApiPayload = (responses, questions, personalities, scores) => {
+  const buildApiPayload = (responses, questions, personalities, scores, backNavs = []) => {
     return {
       quizId: 'ai-personality-quiz',
       personalities: personalities.map(p => ({ id: p.id, name: p.name })),
       clientFallback: {
         personalityId: Object.entries(scores).sort((a, b) => b[1] - a[1])[0]?.[0] || personalities[0]?.id,
       },
+      // Include back navigation data for behavioral analysis
+      backNavigations: backNavs.length > 0 ? {
+        count: backNavs.length,
+        events: backNavs,
+      } : undefined,
       questions: responses.map((r, idx) => {
         const q = questions[idx];
         const analytics = r.analytics || {};
@@ -258,6 +376,11 @@ const App = () => {
           id: q.id,
           type: mappedType,
         };
+        
+        // Flag if this question was revised (user went back and changed answer)
+        if (r.wasRevised) {
+          baseQuestion.wasRevised = true;
+        }
         
         // Only add timing fields if they have valid values
         if (timing.questionShownAt) baseQuestion.startedAtMs = Math.round(timing.questionShownAt);
@@ -292,9 +415,28 @@ const App = () => {
               baseQuestion.order = finalOrder;
             }
             const swaps = analytics.rankings?.moves?.length || 0;
-            if (swaps > 0) {
-              baseQuestion.swaps = swaps;
+            baseQuestion.swaps = swaps;
+            
+            // Flag if user didn't interact at all (accepted default order)
+            if (swaps === 0) {
+              baseQuestion.noInteraction = true;
+              baseQuestion.interactionQuality = 'low';
+            } else if (swaps <= 2) {
+              baseQuestion.interactionQuality = 'medium';
+            } else {
+              baseQuestion.interactionQuality = 'high';
             }
+            
+            // Check for items moved multiple times (hesitation)
+            const moveCounts = {};
+            analytics.rankings?.moves?.forEach(m => {
+              moveCounts[m.itemId] = (moveCounts[m.itemId] || 0) + 1;
+            });
+            const hesitantItems = Object.entries(moveCounts).filter(([, count]) => count > 1);
+            if (hesitantItems.length > 0) {
+              baseQuestion.hesitantItems = hesitantItems.map(([id, count]) => ({ id, moves: count }));
+            }
+            
             if (timing.responseTime) {
               baseQuestion.durationMs = Math.round(timing.responseTime);
             }
@@ -302,17 +444,57 @@ const App = () => {
           }
           case 'range': {
             // Use r.response as fallback for the same race condition reason
-            // Filter to only numeric values (slider values, not the default arrays)
-            const responseObj = analytics.response || r.response || {};
-            const numericValues = Object.entries(responseObj)
-              .filter(([key, val]) => typeof val === 'number')
-              .reduce((acc, [key, val]) => ({ ...acc, [key]: val }), {});
+            const sliderData = analytics.sliderData || {};
+            const sliders = Object.entries(sliderData);
             
-            const firstValue = Object.values(numericValues)[0];
-            if (typeof firstValue === 'number') {
-              // Normalize based on typical 1-10 range to 0-1
-              baseQuestion.value = Math.max(0, Math.min(1, firstValue / 10));
+            // Calculate slider values and movements
+            const sliderValues = {};
+            let totalMovement = 0;
+            let movedCount = 0;
+            const extremeValues = [];
+            
+            sliders.forEach(([id, data]) => {
+              if (typeof data.value === 'number') {
+                sliderValues[id] = data.value;
+                totalMovement += data.totalMovement || 0;
+                if (data.totalMovement > 0) movedCount++;
+                // Track extreme positions (1 or 10 on 1-10 scale, or edges)
+                if (data.value <= 1 || data.value >= 9) {
+                  extremeValues.push({ id, value: data.value });
+                }
+              }
+            });
+            
+            // Include all slider values
+            if (Object.keys(sliderValues).length > 0) {
+              baseQuestion.values = sliderValues;
+              // Also include a normalized average for simple scoring
+              const avg = Object.values(sliderValues).reduce((a, b) => a + b, 0) / Object.values(sliderValues).length;
+              baseQuestion.value = Math.max(0, Math.min(1, avg / 10));
             }
+            
+            // Flag if user didn't interact with sliders
+            const expectedSliders = q.statements?.length || 0;
+            if (movedCount === 0) {
+              baseQuestion.noInteraction = true;
+              baseQuestion.interactionQuality = 'low';
+            } else if (movedCount < expectedSliders) {
+              baseQuestion.partialInteraction = true;
+              baseQuestion.slidersModified = movedCount;
+              baseQuestion.slidersTotal = expectedSliders;
+              baseQuestion.interactionQuality = 'medium';
+            } else {
+              baseQuestion.interactionQuality = 'high';
+            }
+            
+            // Include movement data
+            baseQuestion.totalMovement = Math.round(totalMovement);
+            
+            // Include extreme values
+            if (extremeValues.length > 0) {
+              baseQuestion.extremePositions = extremeValues;
+            }
+            
             if (timing.responseTime) {
               baseQuestion.durationMs = Math.round(timing.responseTime);
             }
@@ -404,42 +586,88 @@ const App = () => {
       
       {/* Questions */}
       <div 
-        className={`app__questions ${phase === 'quiz' ? 'visible' : ''}`}
+        className={`app__questions ${phase === 'quiz' || phase === 'confirm' ? 'visible' : ''}`}
         ref={questionsRef}
       >
-        {preparedQuestions.map((question, index) => (
-          <Question
-            key={`${runId}-${question.id}`}
-            question={question}
-            questionIndex={index}
-            currentQuestionIndex={currentQuestionIndex}
-            isActive={phase === 'quiz' && index === currentQuestionIndex}
-            isAnswered={index < currentQuestionIndex}
-            runId={runId}
-            analytics={analytics}
-            onAnswer={(response) => handleAnswer(index, response)}
-            onInteraction={(interaction) => handleInteraction(index, interaction)}
-            onMarkOptionsShown={() => handleMarkOptionsShown(index)}
-            typeSpeed={TYPE_SPEED}
-          />
-        ))}
+        {preparedQuestions.map((question, index) => {
+          // Determine question state
+          const isCurrentQuestion = index === currentQuestionIndex;
+          const hasResponse = responses[index]?.response != null;
+          const isBeingRevised = revisingQuestionIndex === index;
+          
+          // Question is "locked" if it's been answered AND we're not actively revising it
+          // (stays locked even when viewing it - user must click "Change Answer" to unlock)
+          const isLocked = hasResponse && !isBeingRevised;
+          
+          // Question should be hidden if we're revising an earlier question
+          const shouldHide = revisingQuestionIndex !== null && index > revisingQuestionIndex;
+          
+          return (
+            <Question
+              key={`${runId}-${question.id}`}
+              question={question}
+              questionIndex={index}
+              currentQuestionIndex={currentQuestionIndex}
+              isActive={phase === 'quiz' && isCurrentQuestion && !shouldHide}
+              isAnswered={hasResponse && index < currentQuestionIndex}
+              isLocked={isLocked}
+              isRevising={isBeingRevised}
+              shouldHide={shouldHide}
+              runId={runId}
+              analytics={analytics}
+              onAnswer={(response) => handleAnswer(index, response)}
+              onBack={handleBack}
+              onChangeAnswer={() => handleChangeAnswer(index)}
+              onInteraction={(interaction) => handleInteraction(index, interaction)}
+              onMarkOptionsShown={() => handleMarkOptionsShown(index)}
+              typeSpeed={TYPE_SPEED}
+            />
+          );
+        })}
       </div>
       
+      {/* Confirmation Screen */}
+      {phase === 'confirm' && (
+        <div className="app__confirm">
+          <div className="app__confirm-content">
+            <h2 className="app__confirm-title">Ready to see your results?</h2>
+            <p className="app__confirm-subtitle">
+              You've answered all {preparedQuestions.length} questions. 
+              You can go back to review your answers or start the analysis.
+            </p>
+            <div className="app__confirm-actions">
+              <button 
+                className="app__confirm-back"
+                onClick={handleBack}
+              >
+                ← Review Answers
+              </button>
+              <button 
+                className="app__confirm-start"
+                onClick={handleConfirmAnalysis}
+              >
+                Start Analysis
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      
       {/* Micro Feedback Overlay */}
-      {phase === 'quiz' && (
+      {(phase === 'quiz' || phase === 'confirm') && (
         <MicroFeedback 
+          key={runId}
           feedback={currentFeedback}
           onComplete={() => setCurrentFeedback(null)}
         />
       )}
       
-      {/* Loading indicator while analyzing */}
-      {phase === 'analyzing' && (
-        <div className="app__loading">
-          <div className="app__loading-spinner" />
-          <p>Analyzing responses...</p>
-        </div>
-      )}
+      {/* Analysis Animation */}
+      <AnalysisAnimation
+        isActive={phase === 'analyzing'}
+        duration={ANALYSIS_DURATION}
+        onComplete={handleAnalysisAnimationComplete}
+      />
       
       {/* Results */}
       <Results

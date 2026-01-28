@@ -240,7 +240,7 @@ const RankedChoice = ({
             key={item.id}
             ref={el => itemRefs.current[index] = el}
             className={`ranked-choice__item ${index < visibleCount ? 'visible' : ''} ${draggedIndex === index ? 'dragging' : ''} ${dragOverIndex === index && draggedIndex !== index ? 'drag-over' : ''}`}
-            style={{ '--index': index }}
+            style={{ '--index': index, opacity: index < visibleCount ? undefined : 0 }}
             draggable={index < visibleCount}
             onDragStart={(e) => handleDragStart(e, index)}
             onDragOver={(e) => handleDragOver(e, index)}
@@ -284,6 +284,7 @@ const RankedChoice = ({
       
       <button
         className={`ranked-choice__confirm ${isReady ? 'visible' : ''}`}
+        style={{ opacity: isReady ? undefined : 0 }}
         disabled={!isReady}
         onClick={handleConfirm}
       >

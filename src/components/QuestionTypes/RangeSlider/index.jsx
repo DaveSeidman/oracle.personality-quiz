@@ -72,7 +72,7 @@ const StatementSlider = ({
   return (
     <div 
       className={`statement-slider ${isVisible ? 'visible' : ''} ${isDragging ? 'dragging' : ''}`}
-      style={{ '--index': index }}
+      style={{ '--index': index, opacity: isVisible ? undefined : 0 }}
     >
       <p className="statement-slider__text">{text}</p>
       
@@ -225,6 +225,7 @@ const RangeSlider = ({
       
       <button
         className={`range-slider__confirm ${isReady ? 'visible' : ''}`}
+        style={{ opacity: isReady ? undefined : 0 }}
         disabled={!isReady}
         onClick={handleConfirm}
       >

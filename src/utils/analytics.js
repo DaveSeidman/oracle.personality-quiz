@@ -70,11 +70,25 @@ export const generateMicroFeedback = (questionAnalytics, questionType) => {
   if (questionType === 'ranked-choice' && questionAnalytics.rankings) {
     const { moves } = questionAnalytics.rankings;
     const rearrangements = moves?.length || 0;
-    if (rearrangements > 4) {
+    
+    // No reordering - user accepted default order
+    if (rearrangements === 0) {
+      messages.push({
+        type: 'no-reorder',
+        text: `Default order accepted without modification — reducing question weight coefficient`,
+        impact: 'negative'
+      });
+    } else if (rearrangements > 4) {
       messages.push({
         type: 'reordering',
         text: `${rearrangements} position changes — priority recalibration in progress`,
         impact: 'neutral'
+      });
+    } else if (rearrangements >= 1 && rearrangements <= 2) {
+      messages.push({
+        type: 'minor-reorder',
+        text: `${rearrangements} strategic repositioning${rearrangements > 1 ? 's' : ''} — clear preference hierarchy`,
+        impact: 'positive'
       });
     }
     
@@ -87,21 +101,54 @@ export const generateMicroFeedback = (questionAnalytics, questionType) => {
     if (multiMoved.length > 0) {
       messages.push({
         type: 'hesitation',
-        text: `Item "${multiMoved[0][0]}" repositioned ${multiMoved[0][1]}x — preference uncertainty flagged`,
+        text: `Item repositioned ${multiMoved[0][1]}x — preference uncertainty flagged`,
         impact: 'negative'
       });
     }
   }
 
   // Range analysis
-  if (questionType === 'range' && questionAnalytics.sliderData) {
-    const sliders = Object.values(questionAnalytics.sliderData);
+  if (questionType === 'range') {
+    const sliderData = questionAnalytics.sliderData || {};
+    const sliders = Object.values(sliderData);
+    const totalSliders = sliders.length;
+    const movedSliders = sliders.filter(s => s.totalMovement > 0);
     const highMovement = sliders.filter(s => s.totalMovement > 100);
+    
+    // No sliders touched at all
+    if (totalSliders === 0 || movedSliders.length === 0) {
+      messages.push({
+        type: 'no-slider-interaction',
+        text: `No slider adjustments made — default values accepted, reducing question weight`,
+        impact: 'negative'
+      });
+    } else if (movedSliders.length < totalSliders) {
+      const untouched = totalSliders - movedSliders.length;
+      messages.push({
+        type: 'partial-slider-interaction',
+        text: `${untouched} of ${totalSliders} sliders unchanged — partial engagement noted`,
+        impact: 'neutral'
+      });
+    }
+    
     if (highMovement.length > 0) {
       messages.push({
         type: 'range-adjustment',
-        text: `Significant value recalibration detected across ${highMovement.length} statements`,
+        text: `Significant value recalibration detected across ${highMovement.length} statement${highMovement.length > 1 ? 's' : ''}`,
         impact: 'neutral'
+      });
+    }
+    
+    // Check for sliders moved to extreme values
+    const extremeSliders = sliders.filter(s => {
+      const val = s.value;
+      return val !== undefined && (val <= 1 || val >= 9);
+    });
+    if (extremeSliders.length > 0) {
+      messages.push({
+        type: 'extreme-values',
+        text: `${extremeSliders.length} extreme position${extremeSliders.length > 1 ? 's' : ''} selected — strong preference signal`,
+        impact: 'positive'
       });
     }
   }

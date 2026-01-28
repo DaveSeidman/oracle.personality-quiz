@@ -9,17 +9,17 @@
     'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-
+  
   // Touch action for better mobile handling
   touch-action: pan-y;
-
+  
   // Prevent text selection during quiz
   user-select: none;
   -webkit-user-select: none;
-
+  
   // Prevent iOS callouts (long-press menus)
   -webkit-touch-callout: none;
-
+  
   // Prevent tap highlight on buttons
   -webkit-tap-highlight-color: transparent;
 }
@@ -29,23 +29,23 @@
   inset: 0;
   z-index: 0;
   transition: opacity 0.8s ease;
-
+  
   &.muted {
     opacity: 0.3;
   }
-
+  
   video {
     width: 100%;
     height: 100%;
     object-fit: cover;
   }
-
+  
   &-fallback {
     position: absolute;
     inset: 0;
     background: radial-gradient(ellipse at 30% 20%, rgba(79, 172, 254, 0.15) 0%, transparent 50%),
-      radial-gradient(ellipse at 70% 80%, rgba(0, 242, 254, 0.1) 0%, transparent 50%),
-      linear-gradient(180deg, #0a0a1a 0%, #1a1a3e 50%, #0a0a1a 100%);
+                radial-gradient(ellipse at 70% 80%, rgba(0, 242, 254, 0.1) 0%, transparent 50%),
+                linear-gradient(180deg, #0a0a1a 0%, #1a1a3e 50%, #0a0a1a 100%);
   }
 }
 
@@ -55,10 +55,10 @@
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.5s ease;
-
+  
   // Allow natural document scroll - questions stack vertically
   // Hidden questions have height: 0, so user can only scroll to answered ones
-
+  
   &.visible {
     opacity: 1;
     pointer-events: auto;
@@ -74,11 +74,7 @@
   z-index: 100;
   opacity: 0.8;
   transition: opacity 0.3s ease;
-
-  &:hover {
-    opacity: 1;
-  }
-
+  
   @media (max-width: 768px) {
     width: 60px;
     top: 1rem;
@@ -97,13 +93,13 @@
   gap: 1.5rem;
   background: rgba(10, 10, 26, 0.95);
   animation: fadeIn 0.3s ease;
-
+  
   p {
     color: rgba(255, 255, 255, 0.8);
     font-size: 1.1rem;
     letter-spacing: 0.05em;
   }
-
+  
   &-spinner {
     width: 40px;
     height: 40px;
@@ -121,9 +117,7 @@
 }
 
 // Global reset and base styles
-*,
-*::before,
-*::after {
+*, *::before, *::after {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
@@ -131,7 +125,13 @@
 
 html {
   scroll-behavior: smooth;
-  font-size: 32px;
+  // Base font size - adjust this single value to scale entire UI
+  // Default browser is 16px, doubled for large tablet (2960x1848)
+  font-size: var(--base-font-size, 32px);
+}
+
+:root {
+  --base-font-size: 32px;
 }
 
 body {
@@ -146,12 +146,12 @@ button {
   -webkit-touch-callout: none;
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation; // Faster clicks, no double-tap zoom
-
+  
   &:focus {
     outline: 2px solid rgba(79, 172, 254, 0.5);
     outline-offset: 2px;
   }
-
+  
   &:focus:not(:focus-visible) {
     outline: none;
   }
@@ -169,10 +169,6 @@ button {
 ::-webkit-scrollbar-thumb {
   background: rgba(255, 255, 255, 0.2);
   border-radius: 4px;
-
-  &:hover {
-    background: rgba(255, 255, 255, 0.3);
-  }
 }
 
 // Utility animations
@@ -180,7 +176,6 @@ button {
   from {
     opacity: 0;
   }
-
   to {
     opacity: 1;
   }
@@ -191,7 +186,6 @@ button {
     opacity: 0;
     transform: translateY(30px);
   }
-
   to {
     opacity: 1;
     transform: translateY(0);
@@ -203,7 +197,6 @@ button {
     opacity: 0;
     transform: scale(0.9);
   }
-
   to {
     opacity: 1;
     transform: scale(1);
@@ -213,4 +206,101 @@ button {
 // Focus visible polyfill
 .js-focus-visible :focus:not(.focus-visible) {
   outline: none;
+}
+
+// Confirmation Screen
+.app__confirm {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(10, 10, 26, 0.95);
+  z-index: 30;
+  padding: 2rem;
+  animation: fadeIn 0.5s ease;
+}
+
+.app__confirm-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+  max-width: 50rem;
+  text-align: center;
+}
+
+.app__confirm-title {
+  color: white;
+  font-size: 2rem;
+  font-weight: 700;
+  margin: 0;
+  animation: fadeInUp 0.5s ease backwards;
+  animation-delay: 0.1s;
+}
+
+.app__confirm-subtitle {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 1.1rem;
+  line-height: 1.6;
+  margin: 0;
+  animation: fadeInUp 0.5s ease backwards;
+  animation-delay: 0.2s;
+}
+
+.app__confirm-actions {
+  display: flex;
+  gap: 1.5rem;
+  margin-top: 1rem;
+  animation: fadeInUp 0.5s ease backwards;
+  animation-delay: 0.3s;
+  
+  @media (max-width: 500px) {
+    flex-direction: column;
+    width: 100%;
+  }
+}
+
+.app__confirm-back {
+  padding: 1rem 2rem;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 1.1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease;
+  
+  &:active {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.4);
+  }
+}
+
+.app__confirm-start {
+  padding: 1.25rem 3rem;
+  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  border: none;
+  border-radius: 12px;
+  color: white;
+  font-size: 1.25rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  
+  &:active {
+    transform: scale(0.98);
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }

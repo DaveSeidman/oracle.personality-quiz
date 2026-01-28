@@ -124,7 +124,7 @@ const SlideOption = ({
   return (
     <div
       className={`slide-option ${isVisible ? 'visible' : ''} ${isSelected ? 'selected' : ''} ${isDragging ? 'dragging' : ''}`}
-      style={{ '--index': index }}
+      style={{ '--index': index, opacity: isVisible ? undefined : 0 }}
       onPointerEnter={handlePointerEnter}
     >
       <div 
