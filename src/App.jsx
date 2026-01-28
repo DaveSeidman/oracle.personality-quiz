@@ -256,7 +256,7 @@ const App = () => {
             {personality?.description}
           </h2>
           <h2 className="questions-results-drink">
-            <span>Ask your bartender for the</span>
+            <span>Ask your bartender for the </span>
             <span className="bold">{personality?.drink}</span>
             <span>🍹</span>
           </h2>
