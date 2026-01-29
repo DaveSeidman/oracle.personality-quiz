@@ -118,10 +118,16 @@ body,
   .logo {
     position: absolute;
     bottom: 0;
-    left: 0;
-    margin: 1vh 4vh;
-    // width: 12vh;
-    height: 12vh;
+    margin: 4vh;
+    width: 20vh;
+
+    &.left {
+      left: 0;
+    }
+
+    &.right {
+      right: 0;
+    }
   }
 
   h1,
@@ -169,8 +175,8 @@ body,
 
   .questions {
     position: absolute;
-    width: calc(100% - 16vh);
-    height: calc(100% - 22vh);
+    width: calc(100% - 12vh);
+    height: calc(100% - 26vh);
     left: 0;
     top: 0;
     margin: 11vh 8vh;

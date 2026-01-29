@@ -4,8 +4,8 @@ import { TypeAnimation } from "react-type-animation";
 import questions from "./assets/data/questions.json";
 import personalities from "./assets/data/personalities.json";
 import backgroundVideo from "./assets/videos/redwoods.mp4";
-import logo from "./assets/images/logo.png";
-
+import oracleLogo from "./assets/images/oracle-logo.png";
+import deloitteLogo from "./assets/images/deloitte-logo.png";
 import "./index.scss";
 
 function OptionButton({ runId, currentQuestionIndex, questionIndex, questionText, options, option, order, responses, addResponse, QUESTION_SPEED, ANSWER_SPEED, questionId }) {
@@ -273,7 +273,8 @@ const App = () => {
         Begin
       </button>
 
-      <img className="logo" src={logo} />
+      <img className="logo left" src={oracleLogo} />
+      <img className="logo right" src={deloitteLogo} />
     </div>
   );
 };
