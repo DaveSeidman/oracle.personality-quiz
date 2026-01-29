@@ -3,185 +3,264 @@
  * Tracks all behavioral data during quiz interactions
  */
 
-// Generate micro-feedback messages based on analytics
-export const generateMicroFeedback = (questionAnalytics, questionType) => {
+// Generate observational micro-feedback messages based on behavioral analytics
+// These describe what the user did, with small qualifying statements about what it might mean
+export const generateMicroFeedback = (questionAnalytics, questionType, question) => {
   const messages = [];
-  const { timing, interactions, response } = questionAnalytics;
+  const { timing, interactions, response, rankings, sliderData, freeResponse } = questionAnalytics;
   
-  // Response time analysis
-  if (timing?.responseTime) {
-    const responseTime = timing.responseTime;
-    if (responseTime < 1500) {
-      messages.push({
-        type: 'confidence',
-        text: `Response recorded in ${responseTime}ms — high confidence indicator detected`,
-        impact: 'positive'
+  const rt = timing?.responseTime;
+  const finalSelection = response?.selectedIds?.[0];
+  const selectedIds = response?.selectedIds || [];
+  const selectionOrder = response?.selectionOrder || [];
+  const deselections = selectionOrder.filter(s => s.startsWith('-'));
+  const presentationOrder = questionAnalytics.presentationOrder || [];
+  
+  // Calculate pressure stats
+  const pressureEvents = interactions?.filter(i => i.pressure !== undefined && i.pressure > 0) || [];
+  const avgPressure = pressureEvents.length > 0 
+    ? pressureEvents.reduce((a, b) => a + b.pressure, 0) / pressureEvents.length 
+    : null;
+  
+  // Helper to get position in presentation order
+  const getPosition = (id) => {
+    const pos = presentationOrder.indexOf(id);
+    return pos >= 0 ? pos + 1 : null;
+  };
+  
+  // Helper to format duration
+  const formatDuration = (ms) => {
+    if (ms < 1000) return `${Math.round(ms)}ms`;
+    return `${(ms / 1000).toFixed(1)} seconds`;
+  };
+  
+  // 1. Selection change behavior (most insightful)
+  if (deselections.length > 0 && finalSelection) {
+    const originalChoice = selectionOrder.find(s => !s.startsWith('-'));
+    if (originalChoice && originalChoice !== finalSelection) {
+      messages.push({ 
+        text: `User originally selected ${originalChoice}, then changed to ${finalSelection} — perhaps reconsidering their first instinct.` 
       });
-    } else if (responseTime > 5000) {
-      messages.push({
-        type: 'deliberation',
-        text: `${(responseTime / 1000).toFixed(1)}s deliberation time suggests careful consideration`,
-        impact: 'neutral'
+    } else if (deselections.length > 1) {
+      messages.push({ 
+        text: `User toggled between options ${deselections.length} times before settling on ${finalSelection} — suggesting some uncertainty.` 
       });
     }
   }
-
-  // Hover analysis (web only)
-  const hovers = interactions?.filter(i => i.type === 'hover') || [];
-  if (hovers.length > 3) {
-    messages.push({
-      type: 'exploration',
-      text: `${hovers.length} option explorations detected — uncertainty coefficient +${Math.round(hovers.length * 4)}%`,
-      impact: 'neutral'
-    });
+  
+  // 2. Drag-away behavior (started to select but pulled away)
+  const dragAways = interactions?.filter(i => 
+    i.type === 'pointerleave-while-pressed' || i.data?.changedMind
+  ) || [];
+  
+  if (dragAways.length > 0 && finalSelection) {
+    const abandonedTargets = [...new Set(dragAways.map(d => d.targetId))].filter(t => t !== finalSelection);
+    if (abandonedTargets.length === 1) {
+      messages.push({ 
+        text: `User pressed on ${abandonedTargets[0]} but pulled away, then chose ${finalSelection} — initial hesitation before committing.` 
+      });
+    } else if (abandonedTargets.length > 1) {
+      messages.push({ 
+        text: `User touched ${abandonedTargets.length} different options before committing to ${finalSelection} — exploring before deciding.` 
+      });
+    }
   }
-
-  // Touch pressure analysis
-  const pressureEvents = interactions?.filter(i => i.pressure !== undefined) || [];
-  if (pressureEvents.length > 0) {
-    const avgPressure = pressureEvents.reduce((a, b) => a + b.pressure, 0) / pressureEvents.length;
+  
+  // 3. Response time with context
+  if (rt !== undefined && finalSelection) {
+    const position = getPosition(finalSelection);
+    if (rt < 1500 && position === 1) {
+      messages.push({ 
+        text: `User selected the first option shown (${finalSelection}) in ${formatDuration(rt)} — possibly a gut reaction.` 
+      });
+    } else if (rt < 2000) {
+      messages.push({ 
+        text: `User responded quickly in ${formatDuration(rt)} — suggesting confidence in their choice.` 
+      });
+    } else if (rt > 10000) {
+      messages.push({ 
+        text: `User took ${formatDuration(rt)} to decide — careful deliberation or perhaps difficulty choosing.` 
+      });
+    }
+  }
+  
+  // 4. Multi-select specific (image grid)
+  if (selectedIds.length > 1) {
+    const firstPick = selectionOrder.find(s => !s.startsWith('-'));
+    const secondPick = selectionOrder.filter(s => !s.startsWith('-'))[1];
+    if (firstPick && secondPick) {
+      messages.push({ 
+        text: `User selected ${firstPick} first, then added ${secondPick} — primary preference may be ${firstPick}.` 
+      });
+    }
+  }
+  
+  // 5. Touch pressure analysis
+  if (avgPressure !== null && finalSelection) {
     if (avgPressure > 0.7) {
-      messages.push({
-        type: 'pressure',
-        text: `Touch pressure ${(avgPressure * 100).toFixed(0)}% above baseline — reducing ambivalence factor`,
-        impact: 'positive'
+      messages.push({ 
+        text: `User pressed firmly when selecting ${finalSelection} — physical confidence in the choice.` 
+      });
+    } else if (avgPressure < 0.3) {
+      messages.push({ 
+        text: `User used light touch pressure throughout — tentative interaction style.` 
       });
     }
   }
-
-  // Slider-specific analysis
-  if (questionType === 'slide-to-select' && timing?.sliderDuration) {
-    if (timing.sliderDuration < 500) {
-      messages.push({
-        type: 'slider-speed',
-        text: `Rapid slide completion (${timing.sliderDuration}ms) — decisive selection pattern`,
-        impact: 'positive'
-      });
-    } else if (timing.sliderDuration > 2000) {
-      messages.push({
-        type: 'slider-hesitation',
-        text: `Extended slider engagement — weighing commitment before confirmation`,
-        impact: 'neutral'
-      });
-    }
-  }
-
-  // Ranked choice analysis
-  if (questionType === 'ranked-choice' && questionAnalytics.rankings) {
-    const { moves } = questionAnalytics.rankings;
-    const rearrangements = moves?.length || 0;
+  
+  // 6. Slide-to-select specific
+  if (questionType === 'slide-to-select') {
+    const sliderEnds = interactions?.filter(i => i.type === 'slider-end') || [];
+    const abandoned = sliderEnds.filter(e => !e.data?.completed);
+    const completed = sliderEnds.find(e => e.data?.completed);
     
-    // No reordering - user accepted default order
-    if (rearrangements === 0) {
-      messages.push({
-        type: 'no-reorder',
-        text: `Default order accepted without modification — reducing question weight coefficient`,
-        impact: 'negative'
-      });
-    } else if (rearrangements > 4) {
-      messages.push({
-        type: 'reordering',
-        text: `${rearrangements} position changes — priority recalibration in progress`,
-        impact: 'neutral'
-      });
-    } else if (rearrangements >= 1 && rearrangements <= 2) {
-      messages.push({
-        type: 'minor-reorder',
-        text: `${rearrangements} strategic repositioning${rearrangements > 1 ? 's' : ''} — clear preference hierarchy`,
-        impact: 'positive'
-      });
+    if (abandoned.length > 0 && completed) {
+      const maxPull = Math.max(...abandoned.map(a => a.data?.finalValue || 0));
+      const abandonedId = abandoned.find(a => a.data?.finalValue === maxPull)?.targetId;
+      if (abandonedId && maxPull > 0.3) {
+        messages.push({ 
+          text: `User started sliding ${abandonedId} to ${Math.round(maxPull * 100)}%, then released and chose ${completed.targetId} instead.` 
+        });
+      }
     }
     
-    // Check for items moved multiple times
-    const moveCounts = {};
-    moves?.forEach(m => {
-      moveCounts[m.itemId] = (moveCounts[m.itemId] || 0) + 1;
-    });
-    const multiMoved = Object.entries(moveCounts).filter(([, count]) => count > 1);
-    if (multiMoved.length > 0) {
-      messages.push({
-        type: 'hesitation',
-        text: `Item repositioned ${multiMoved[0][1]}x — preference uncertainty flagged`,
-        impact: 'negative'
-      });
+    if (completed?.data?.velocity) {
+      const v = completed.data.velocity;
+      if (v > 200) {
+        messages.push({ 
+          text: `User completed the slide with a quick swipe — decisive action.` 
+        });
+      } else if (v < 40) {
+        messages.push({ 
+          text: `User slid slowly and deliberately — measured, careful selection.` 
+        });
+      }
     }
   }
-
-  // Range analysis
-  if (questionType === 'range') {
-    const sliderData = questionAnalytics.sliderData || {};
-    const sliders = Object.values(sliderData);
-    const totalSliders = sliders.length;
-    const movedSliders = sliders.filter(s => s.totalMovement > 0);
-    const highMovement = sliders.filter(s => s.totalMovement > 100);
+  
+  // 7. Ranked choice specific
+  if (questionType === 'ranked-choice' && rankings) {
+    const moves = rankings.moves || [];
+    const finalOrder = rankings.final || [];
     
-    // No sliders touched at all
-    if (totalSliders === 0 || movedSliders.length === 0) {
-      messages.push({
-        type: 'no-slider-interaction',
-        text: `No slider adjustments made — default values accepted, reducing question weight`,
-        impact: 'negative'
+    if (moves.length === 0) {
+      messages.push({ 
+        text: `User accepted the presented order without making any changes — either agreement or minimal engagement.` 
       });
-    } else if (movedSliders.length < totalSliders) {
-      const untouched = totalSliders - movedSliders.length;
-      messages.push({
-        type: 'partial-slider-interaction',
-        text: `${untouched} of ${totalSliders} sliders unchanged — partial engagement noted`,
-        impact: 'neutral'
+    } else {
+      // Find items moved multiple times
+      const moveCounts = {};
+      moves.forEach(m => { moveCounts[m.itemId] = (moveCounts[m.itemId] || 0) + 1; });
+      
+      const contested = Object.entries(moveCounts).filter(([, c]) => c >= 3);
+      if (contested.length > 0) {
+        const [itemId, count] = contested[0];
+        messages.push({ 
+          text: `User repositioned "${itemId}" ${count} times — significant uncertainty about where it belongs.` 
+        });
+      }
+      
+      // Top position analysis
+      const topItem = finalOrder[0];
+      const topMoves = moves.filter(m => m.to === 0);
+      if (topMoves.length > 1) {
+        messages.push({ 
+          text: `User changed the top ranking ${topMoves.length} times before settling on ${topItem} — debating priorities.` 
+        });
+      } else if (topItem && moves.some(m => m.itemId === topItem && m.to === 0)) {
+        messages.push({ 
+          text: `User deliberately moved ${topItem} to the top position — clear priority identified.` 
+        });
+      }
+      
+      // Check if bottom items were untouched
+      const movedIds = [...new Set(moves.map(m => m.itemId))];
+      const unmovedIds = finalOrder.filter(id => !movedIds.includes(id));
+      if (unmovedIds.length > 0 && movedIds.length > 0) {
+        messages.push({ 
+          text: `User focused on ranking ${movedIds.join(', ')} but left ${unmovedIds.join(', ')} in place — selective engagement.` 
+        });
+      }
+    }
+  }
+  
+  // 8. Range slider specific
+  if (questionType === 'range' && sliderData) {
+    const sliders = Object.entries(sliderData);
+    const modified = sliders.filter(([, s]) => s.totalMovement > 0);
+    const unmodified = sliders.filter(([, s]) => !s.totalMovement || s.totalMovement === 0);
+    
+    if (unmodified.length > 0 && modified.length > 0) {
+      messages.push({ 
+        text: `User adjusted ${modified.length} sliders but left ${unmodified.length} at the default — partial engagement.` 
       });
     }
     
-    if (highMovement.length > 0) {
-      messages.push({
-        type: 'range-adjustment',
-        text: `Significant value recalibration detected across ${highMovement.length} statement${highMovement.length > 1 ? 's' : ''}`,
-        impact: 'neutral'
+    // Extreme values
+    const extremes = sliders.filter(([, s]) => s.value !== undefined && (s.value <= 2 || s.value >= 9));
+    if (extremes.length >= 2) {
+      messages.push({ 
+        text: `User set ${extremes.length} sliders to extreme positions — strong opinions on these topics.` 
       });
     }
     
-    // Check for sliders moved to extreme values
-    const extremeSliders = sliders.filter(s => {
-      const val = s.value;
-      return val !== undefined && (val <= 1 || val >= 9);
-    });
-    if (extremeSliders.length > 0) {
-      messages.push({
-        type: 'extreme-values',
-        text: `${extremeSliders.length} extreme position${extremeSliders.length > 1 ? 's' : ''} selected — strong preference signal`,
-        impact: 'positive'
+    // Most adjusted slider
+    const mostAdjusted = sliders.sort((a, b) => (b[1].changes || 0) - (a[1].changes || 0))[0];
+    if (mostAdjusted && (mostAdjusted[1].changes || 0) > 3) {
+      messages.push({ 
+        text: `User adjusted "${mostAdjusted[0]}" ${mostAdjusted[1].changes} times before settling on ${mostAdjusted[1].value} — some difficulty deciding.` 
       });
     }
   }
-
-  // Free response analysis
-  if (questionType === 'free-response' && questionAnalytics.freeResponse) {
-    const { typingSpeed, pauses, deletions } = questionAnalytics.freeResponse;
-    if (deletions > 5) {
-      messages.push({
-        type: 'editing',
-        text: `${deletions} revisions made — response refinement behavior observed`,
-        impact: 'neutral'
-      });
+  
+  // 9. Free response specific
+  if (questionType === 'free-response' && freeResponse) {
+    const { keystrokes = [], deletions = 0, pauses = [] } = freeResponse;
+    
+    if (keystrokes.length > 0) {
+      const delRatio = deletions / keystrokes.length;
+      if (delRatio > 0.3) {
+        messages.push({ 
+          text: `User deleted about ${Math.round(delRatio * 100)}% of what they typed — editing heavily, refining their thoughts.` 
+        });
+      }
+      if (pauses.length >= 3) {
+        messages.push({ 
+          text: `User paused ${pauses.length} times while typing — thoughtful composition.` 
+        });
+      }
     }
-    if (pauses?.length > 3) {
-      messages.push({
-        type: 'pauses',
-        text: `${pauses.length} composition pauses — thoughtful articulation pattern`,
-        impact: 'positive'
+  }
+  
+  // 10. Position bias detection
+  if (finalSelection && presentationOrder.length > 0) {
+    const position = getPosition(finalSelection);
+    const total = presentationOrder.length;
+    
+    if (position === total && rt > 5000) {
+      messages.push({ 
+        text: `User selected the last option (${finalSelection}) after ${formatDuration(rt)} — reviewed all options before choosing.` 
       });
     }
   }
-
-  // Selection order for multiple choice
-  if (response?.selectionOrder?.length > 1) {
-    messages.push({
-      type: 'selection-order',
-      text: `Multi-select sequence: ${response.selectionOrder.join(' → ')} — preference hierarchy noted`,
-      impact: 'neutral'
-    });
+  
+  // Fallback messages if we don't have enough
+  if (messages.length < 2) {
+    if (rt) {
+      messages.push({ 
+        text: `Response recorded in ${formatDuration(rt)}.` 
+      });
+    }
+    if (finalSelection || selectedIds.length > 0) {
+      const selected = selectedIds.length > 1 ? selectedIds.join(' and ') : finalSelection;
+      messages.push({ 
+        text: `User selected ${selected}.` 
+      });
+    }
   }
-
-  return messages;
+  
+  // Return up to 3 messages
+  return messages.slice(0, 3);
 };
 
 // Create initial analytics object for a question

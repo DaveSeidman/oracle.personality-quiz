@@ -6,9 +6,10 @@
     "randomize": true,
     "text": "Your ideal AI experience feels:",
     "options": [
-      { "id": "A", "text": "Eye-opening", "weight": { "A": 1, "B": 0, "C": 0 } },
-      { "id": "B", "text": "Effortless", "weight": { "A": 0, "B": 1, "C": 0 } },
-      { "id": "C", "text": "Dependable", "weight": { "A": 0, "B": 0, "C": 1 } }
+      { "id": "A", "text": "Eye-opening", "weight": { "A": 1, "B": 0, "C": 0, "D": 0 } },
+      { "id": "B", "text": "Effortless", "weight": { "A": 0, "B": 1, "C": 0, "D": 0 } },
+      { "id": "C", "text": "Dependable", "weight": { "A": 0, "B": 0, "C": 1, "D": 0 } },
+      { "id": "D", "text": "Surprising", "weight": { "A": 0, "B": 0, "C": 0, "D": 1 } }
     ]
   },
   {
@@ -18,9 +19,10 @@
     "randomize": true,
     "text": "When new data lands in your lap, you first:",
     "options": [
-      { "id": "A", "text": "Look for hidden insight", "weight": { "A": 1, "B": 0, "C": 0 } },
-      { "id": "B", "text": "Think how to operationalize", "weight": { "A": 0, "B": 1, "C": 0 } },
-      { "id": "C", "text": "Validate accuracy and context", "weight": { "A": 0, "B": 0, "C": 1 } }
+      { "id": "A", "text": "Look for hidden insight", "weight": { "A": 1, "B": 0, "C": 0, "D": 0 } },
+      { "id": "B", "text": "Think how to operationalize", "weight": { "A": 0, "B": 1, "C": 0, "D": 0 } },
+      { "id": "C", "text": "Validate accuracy and context", "weight": { "A": 0, "B": 0, "C": 1, "D": 0 } },
+      { "id": "D", "text": "Experiment with different angles", "weight": { "A": 0, "B": 0, "C": 0, "D": 1 } }
     ]
   },
   {
@@ -35,25 +37,25 @@
         "id": "A", 
         "text": "Deep Analysis",
         "image": "images/analysis.svg",
-        "weight": { "A": 1, "B": 0, "C": 0 }
+        "weight": { "A": 1, "B": 0, "C": 0, "D": 0 }
       },
       { 
         "id": "B", 
         "text": "Rapid Iteration",
         "image": "images/iteration.svg",
-        "weight": { "A": 0, "B": 1, "C": 0 }
+        "weight": { "A": 0, "B": 1, "C": 0, "D": 0 }
       },
       { 
         "id": "C", 
         "text": "Systematic Verification",
         "image": "images/verification.svg",
-        "weight": { "A": 0, "B": 0, "C": 1 }
+        "weight": { "A": 0, "B": 0, "C": 1, "D": 0 }
       },
       {
         "id": "D",
         "text": "Creative Exploration",
         "image": "images/creative.svg",
-        "weight": { "A": 0.5, "B": 0.5, "C": 0 }
+        "weight": { "A": 0, "B": 0, "C": 0, "D": 1 }
       }
     ]
   },
@@ -63,10 +65,10 @@
     "randomize": true,
     "text": "Rank these innovation qualities from most to least important to you:",
     "options": [
-      { "id": "A", "text": "Insightful", "weight": { "A": 1, "B": 0, "C": 0 } },
-      { "id": "B", "text": "Seamless", "weight": { "A": 0, "B": 1, "C": 0 } },
-      { "id": "C", "text": "Trusted", "weight": { "A": 0, "B": 0, "C": 1 } },
-      { "id": "D", "text": "Scalable", "weight": { "A": 0, "B": 0.7, "C": 0.3 } }
+      { "id": "A", "text": "Insightful", "weight": { "A": 1, "B": 0, "C": 0, "D": 0 } },
+      { "id": "B", "text": "Seamless", "weight": { "A": 0, "B": 1, "C": 0, "D": 0 } },
+      { "id": "C", "text": "Trusted", "weight": { "A": 0, "B": 0, "C": 1, "D": 0 } },
+      { "id": "D", "text": "Novel", "weight": { "A": 0, "B": 0, "C": 0, "D": 1 } }
     ]
   },
   {
@@ -75,31 +77,40 @@
     "text": "How much do you agree with each statement?",
     "statements": [
       { 
-        "id": "ai-insight", 
+        "id": "insight", 
         "text": "AI's greatest value is uncovering insights humans would miss", 
-        "min": 0, 
+        "min": 1, 
         "max": 10, 
         "step": 1,
-        "labels": { "0": "Disagree", "10": "Agree" },
-        "weight": { "A": 1, "B": 0, "C": 0 }
+        "labels": { "1": "Disagree", "10": "Agree" },
+        "weight": { "A": 1, "B": 0, "C": 0, "D": 0 }
       },
       { 
-        "id": "ai-efficiency", 
+        "id": "efficiency", 
         "text": "AI should primarily make existing workflows faster", 
-        "min": 0, 
+        "min": 1, 
         "max": 10, 
         "step": 1,
-        "labels": { "0": "Disagree", "10": "Agree" },
-        "weight": { "A": 0, "B": 1, "C": 0 }
+        "labels": { "1": "Disagree", "10": "Agree" },
+        "weight": { "A": 0, "B": 1, "C": 0, "D": 0 }
       },
       { 
-        "id": "ai-trust", 
+        "id": "trust", 
         "text": "I won't adopt AI until I fully trust its outputs", 
-        "min": 0, 
+        "min": 1, 
         "max": 10, 
         "step": 1,
-        "labels": { "0": "Disagree", "10": "Agree" },
-        "weight": { "A": 0, "B": 0, "C": 1 }
+        "labels": { "1": "Disagree", "10": "Agree" },
+        "weight": { "A": 0, "B": 0, "C": 1, "D": 0 }
+      },
+      { 
+        "id": "experiment", 
+        "text": "I prefer trying new AI tools early, even if they're imperfect", 
+        "min": 1, 
+        "max": 10, 
+        "step": 1,
+        "labels": { "1": "Disagree", "10": "Agree" },
+        "weight": { "A": 0, "B": 0, "C": 0, "D": 1 }
       }
     ]
   },
@@ -108,19 +119,12 @@
     "type": "text-multiple-choice",
     "selection": "single",
     "randomize": true,
-    "text": "The biggest potential win with analytics is:",
+    "text": "The biggest potential win with AI analytics is:",
     "options": [
-      { "id": "A", "text": "Actionable answers", "weight": { "A": 1, "B": 0, "C": 0 } },
-      { "id": "B", "text": "Clean, governed data", "weight": { "A": 0, "B": 0.5, "C": 0.5 } },
-      { "id": "C", "text": "Confidence in decisions", "weight": { "A": 0, "B": 0, "C": 1 } }
+      { "id": "A", "text": "Discovering non-obvious patterns", "weight": { "A": 1, "B": 0, "C": 0, "D": 0 } },
+      { "id": "B", "text": "Automating repetitive work", "weight": { "A": 0, "B": 1, "C": 0, "D": 0 } },
+      { "id": "C", "text": "Making decisions with confidence", "weight": { "A": 0, "B": 0, "C": 1, "D": 0 } },
+      { "id": "D", "text": "Enabling new possibilities", "weight": { "A": 0, "B": 0, "C": 0, "D": 1 } }
     ]
-  },
-  {
-    "id": "q7",
-    "type": "free-response",
-    "text": "In one sentence, describe what 'intelligent automation' means to you:",
-    "placeholder": "Type your response here...",
-    "minLength": 10,
-    "maxLength": 280
   }
 ]

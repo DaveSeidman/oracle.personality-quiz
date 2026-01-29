@@ -3,6 +3,7 @@ import { haptic, getPointerPressure } from '../../../utils';
 import './index.scss';
 
 const SLIDER_THRESHOLD = 0.85; // Must slide to 85% to select
+const PADDING_REM = 2; // 2rem padding on each side
 
 const SlideOption = ({
   option,
@@ -21,80 +22,90 @@ const SlideOption = ({
   const fillRef = useRef(null);
   const startTimeRef = useRef(null);
   const startXRef = useRef(null);
-  const currentValueRef = useRef(0); // Track value without re-renders
-  
+  const currentValueRef = useRef(0);
+
   const handlePointerDown = useCallback((e) => {
     if (isDisabled || isSelected) return;
-    
+
     e.preventDefault();
     setIsDragging(true);
     startTimeRef.current = performance.now();
     startXRef.current = e.clientX;
     currentValueRef.current = 0;
-    
+
     trackInteraction?.({
       type: 'slider-start',
       targetId: option.id,
       pressure: getPointerPressure(e),
       data: { x: e.clientX },
     });
-    
-    // Capture pointer for smooth tracking
+
     e.target.setPointerCapture?.(e.pointerId);
   }, [isDisabled, isSelected, option.id, trackInteraction]);
-  
+
   const handlePointerMove = useCallback((e) => {
     if (!isDragging || !sliderRef.current) return;
-    
+
     const rect = sliderRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const percentage = Math.max(0, Math.min(1, x / rect.width));
-    
-    // Direct DOM manipulation for immediate response (no React re-render)
+    // Calculate padding in pixels (based on font-size, assume 16px base scaled by tablet)
+    const fontSize = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+    const paddingPx = PADDING_REM * fontSize;
+
+    const usableWidth = rect.width - (paddingPx * 2);
+    const x = e.clientX - rect.left - paddingPx;
+    const percentage = Math.max(0, Math.min(1, x / usableWidth));
+
+    // Position is percentage of usable width, offset by padding
+    const leftPercent = ((paddingPx + (percentage * usableWidth)) / rect.width) * 100;
+
     if (thumbRef.current) {
-      thumbRef.current.style.left = `${percentage * 100}%`;
+      thumbRef.current.style.left = `${leftPercent}%`;
     }
     if (fillRef.current) {
-      fillRef.current.style.width = `${percentage * 100}%`;
+      fillRef.current.style.width = `calc(${leftPercent}% + 2rem)`;
     }
-    
-    // Update icon if crossing threshold
+
     if (thumbRef.current) {
       const icon = thumbRef.current.querySelector('.slide-option__thumb-icon');
       if (icon) {
         icon.textContent = percentage >= SLIDER_THRESHOLD ? '✓' : '→';
       }
     }
-    
-    // Light haptic at threshold
+
     if (percentage >= SLIDER_THRESHOLD && currentValueRef.current < SLIDER_THRESHOLD) {
       haptic(10);
     }
-    
+
     trackSliderChange?.(option.id, percentage, currentValueRef.current);
     currentValueRef.current = percentage;
   }, [isDragging, option.id, trackSliderChange]);
-  
+
   const handlePointerUp = useCallback((e) => {
     if (!isDragging) return;
-    
+
     const duration = startTimeRef.current ? performance.now() - startTimeRef.current : 0;
     const finalValue = currentValueRef.current;
-    
+    const completed = finalValue >= SLIDER_THRESHOLD;
+
+    // Calculate velocity (percentage per second)
+    const velocity = duration > 0 ? Math.round((finalValue * 100) / (duration / 1000)) : 0;
+
     trackInteraction?.({
       type: 'slider-end',
       targetId: option.id,
       pressure: getPointerPressure(e),
-      data: { 
+      data: {
         finalValue,
         duration,
         distance: e.clientX - (startXRef.current || 0),
+        completed,
+        velocity,
       },
     });
-    
+
     setIsDragging(false);
-    
-    if (finalValue >= SLIDER_THRESHOLD) {
+
+    if (completed) {
       haptic(30);
       setSliderValue(1); // Sync React state
       onSelect?.(option.id, duration);
@@ -103,16 +114,16 @@ const SlideOption = ({
       setSliderValue(0);
       currentValueRef.current = 0;
       if (thumbRef.current) {
-        thumbRef.current.style.left = '0%';
+        thumbRef.current.style.left = '1.5rem';
       }
       if (fillRef.current) {
-        fillRef.current.style.width = '0%';
+        fillRef.current.style.width = '1.5rem';
       }
     }
-    
+
     e.target.releasePointerCapture?.(e.pointerId);
   }, [isDragging, option.id, onSelect, trackInteraction]);
-  
+
   const handlePointerEnter = useCallback((e) => {
     trackInteraction?.({
       type: 'hover',
@@ -120,14 +131,14 @@ const SlideOption = ({
       data: { x: e.clientX, y: e.clientY },
     });
   }, [option.id, trackInteraction]);
-  
+
   return (
     <div
       className={`slide-option ${isVisible ? 'visible' : ''} ${isSelected ? 'selected' : ''} ${isDragging ? 'dragging' : ''}`}
       style={{ '--index': index, opacity: isVisible ? undefined : 0 }}
       onPointerEnter={handlePointerEnter}
     >
-      <div 
+      <div
         ref={sliderRef}
         className="slide-option__track"
         onPointerDown={handlePointerDown}
@@ -135,15 +146,13 @@ const SlideOption = ({
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerUp}
       >
-        <div 
+        <div
           ref={fillRef}
           className="slide-option__fill"
-          style={{ width: `${sliderValue * 100}%` }}
         />
-        <div 
+        <div
           ref={thumbRef}
           className="slide-option__thumb"
-          style={{ left: `${sliderValue * 100}%` }}
         >
           <span className="slide-option__thumb-icon">
             {sliderValue >= SLIDER_THRESHOLD ? '✓' : '→'}
@@ -164,6 +173,9 @@ const SlideToSelect = ({
   question,
   presentationOrder,
   isActive,
+  isLocked,
+  isRevising,
+  previousResponse,
   onComplete,
   trackInteraction,
   trackSelection,
@@ -177,58 +189,80 @@ const SlideToSelect = ({
   const timersRef = useRef([]);
   const optionsShownRef = useRef(false);
   const markOptionsShownRef = useRef(markOptionsShown);
-  
+
   // Keep ref updated
   markOptionsShownRef.current = markOptionsShown;
-  
+
   const { selection = 'single', maxSelections = 1, options } = question;
   const maxAllowed = selection === 'single' ? 1 : (maxSelections || options.length);
-  
+
   // Memoize to prevent infinite loops
-  const orderedOptions = useMemo(() => 
+  const orderedOptions = useMemo(() =>
     presentationOrder.map(id => options.find(o => o.id === id)).filter(Boolean),
     [presentationOrder, options]
   );
-  
+
   useEffect(() => {
+    // If locked (viewing saved answer), show selection
+    if (isLocked) {
+      setVisibleOptions(orderedOptions.map(o => o.id));
+      if (previousResponse) {
+        const prevSelected = Array.isArray(previousResponse) ? previousResponse : [previousResponse];
+        setSelectedIds(prevSelected);
+      }
+      markOptionsShownRef.current?.();
+      return;
+    }
+
+    // If revising, show all options but CLEAR selection so user can re-select
+    if (isRevising) {
+      setVisibleOptions(orderedOptions.map(o => o.id));
+      setSelectedIds([]); // Clear selection for fresh start
+      markOptionsShownRef.current?.();
+      return;
+    }
+
     if (!isActive) return;
-    
+
     timersRef.current.forEach(t => clearTimeout(t));
     timersRef.current = [];
+
+    // Animate in
     setVisibleOptions([]);
+    setSelectedIds([]);
     optionsShownRef.current = false;
-    
+
     orderedOptions.forEach((option, index) => {
       const startDelay = index * 200;
-      
+
       const timer = setTimeout(() => {
         setVisibleOptions(prev => [...prev, option.id]);
-        
+
         if (!optionsShownRef.current) {
           optionsShownRef.current = true;
           markOptionsShownRef.current?.();
         }
       }, startDelay);
-      
+
       timersRef.current.push(timer);
     });
-    
+
     return () => {
       timersRef.current.forEach(t => clearTimeout(t));
     };
-  }, [isActive, orderedOptions]);
-  
+  }, [isActive, isLocked, isRevising, orderedOptions, previousResponse]);
+
   const handleSelect = useCallback((optionId, duration) => {
     trackSelection?.(optionId, true);
     setSliderDurations(prev => ({ ...prev, [optionId]: duration }));
-    
+
     if (selection === 'single') {
       setSelectedIds([optionId]);
-      
+
       // Show all options
       setVisibleOptions(orderedOptions.map(o => o.id));
       timersRef.current.forEach(t => clearTimeout(t));
-      
+
       setTimeout(() => {
         onComplete?.([optionId], { sliderDuration: duration });
       }, 300);
@@ -241,18 +275,18 @@ const SlideToSelect = ({
       });
     }
   }, [selection, maxAllowed, trackSelection, onComplete, orderedOptions]);
-  
+
   const handleConfirm = useCallback(() => {
     if (selectedIds.length > 0) {
       haptic(30);
       onComplete?.(selectedIds, { sliderDurations });
     }
   }, [selectedIds, sliderDurations, onComplete]);
-  
+
   const isSelected = (id) => selectedIds.includes(id);
   const isVisible = (id) => visibleOptions.includes(id);
   const canSelectMore = selection === 'multiple' && selectedIds.length < maxAllowed;
-  
+
   return (
     <div className="slide-to-select">
       <div className="slide-to-select__options">
@@ -270,7 +304,7 @@ const SlideToSelect = ({
           />
         ))}
       </div>
-      
+
       {selection === 'multiple' && (
         <div className="slide-to-select__footer">
           <span className="slide-to-select__count">

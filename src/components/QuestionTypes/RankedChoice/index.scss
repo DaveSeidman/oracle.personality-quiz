@@ -1,180 +1,99 @@
+// RankedChoice styles
 .ranked-choice {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
-  touch-action: none;
-  
-  &__instructions {
-    color: rgba(255, 255, 255, 0.7);
-    font-size: 0.9rem;
-    text-align: center;
-    margin-bottom: 0.5rem;
-  }
-  
+  gap: 1rem;
+  max-width: 32rem;
+  margin: 0 auto;
+
   &__list {
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
+    position: relative;
   }
-  
+
   &__item {
     display: flex;
     align-items: center;
-    gap: 1rem;
-    padding: 1rem 1.25rem;
-    background: rgba(255, 255, 255, 0.1);
-    border: 2px solid rgba(255, 255, 255, 0.2);
-    border-radius: 12px;
+    gap: 0.75rem;
+    padding: 0.875rem 1rem;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 0.5rem;
     cursor: grab;
-    position: relative;
     touch-action: none;
-    -webkit-touch-callout: none;
     user-select: none;
-    // Animation with backwards fill-mode to prevent flicker
-    animation: slideIn 0.4s ease backwards;
-    animation-delay: calc(var(--index) * 0.1s);
-    animation-play-state: paused;
-    
+    opacity: 0;
+    transition: opacity 0.35s ease, transform 0.15s ease, background 0.2s, border-color 0.2s, box-shadow 0.2s;
+
     &.visible {
-      animation-play-state: running;
+      opacity: 1;
+      transition-delay: calc(var(--index) * 0.08s);
     }
     
     &.dragging {
-      opacity: 0.8;
+      background: rgba(74,158,255,0.15);
+      border-color: #4a9eff;
+      box-shadow: 0 4px 20px rgba(74,158,255,0.25);
+      z-index: 100;
       cursor: grabbing;
-      transform: scale(1.02);
-      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
-      background: rgba(100, 200, 255, 0.2);
-      border-color: rgba(100, 200, 255, 0.5);
-      z-index: 10;
     }
     
-    &.drag-over {
-      border-color: rgba(100, 200, 255, 0.8);
-      background: rgba(100, 200, 255, 0.15);
-      
-      &::before {
-        content: '';
-        position: absolute;
-        top: -4px;
-        left: 0;
-        right: 0;
-        height: 4px;
-        background: rgba(100, 200, 255, 1);
-        border-radius: 2px;
-      }
-    }
+    &:active { cursor: grabbing; }
   }
-  
+
   &__rank {
+    width: 1.5rem;
+    height: 1.5rem;
+    background: rgba(255,255,255,0.08);
+    border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 32px;
-    height: 32px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    border-radius: 8px;
-    color: white;
-    font-weight: bold;
-    font-size: 1rem;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    color: rgba(255,255,255,0.6);
     flex-shrink: 0;
   }
-  
+
   &__text {
     flex: 1;
-    color: white;
-    font-size: 1.1rem;
+    color: rgba(255,255,255,0.9);
+    font-size: 0.9375rem;
   }
-  
-  &__controls {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
-  
-  &__arrow {
-    width: 28px;
-    height: 28px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 6px;
-    color: white;
-    font-size: 0.875rem;
-    cursor: pointer;
-    
-    &:active:not(:disabled) {
-      transform: scale(0.9);
-      background: rgba(255, 255, 255, 0.2);
-    }
-    
-    &:disabled {
-      opacity: 0.3;
-      cursor: not-allowed;
-    }
-  }
-  
+
   &__handle {
-    color: rgba(255, 255, 255, 0.4);
-    font-size: 1.25rem;
-    cursor: grab;
-    user-select: none;
-    letter-spacing: 2px;
-    
-    &:active {
-      cursor: grabbing;
-    }
+    color: rgba(255,255,255,0.3);
+    font-size: 1rem;
+    flex-shrink: 0;
+    letter-spacing: 0.1em;
   }
-  
+
   &__confirm {
     margin-top: 1rem;
-    padding: 1rem 2rem;
-    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    padding: 0.875rem 1.5rem;
+    background: linear-gradient(135deg, #4a9eff 0%, #3d7dd8 100%);
     border: none;
-    border-radius: 12px;
+    border-radius: 0.5rem;
     color: white;
-    font-size: 1.1rem;
-    font-weight: 600;
+    font-size: 0.9375rem;
+    font-weight: 500;
     cursor: pointer;
-    // Animation with backwards fill-mode
-    animation: fadeInUp 0.4s ease backwards;
-    animation-play-state: paused;
+    opacity: 0;
+    box-shadow: 0 2px 10px rgba(74,158,255,0.3);
+    transition: opacity 0.3s ease, transform 0.2s ease;
     
-    &.visible {
-      animation-play-state: running;
-    }
+    &.visible { opacity: 1; }
     
-    &:active:not(:disabled) {
+    &:active {
       transform: scale(0.98);
     }
     
-    &:disabled {
-      opacity: 0.5;
+    &:disabled { 
+      opacity: 0.4;
       cursor: not-allowed;
+      box-shadow: none;
     }
-  }
-}
-
-@keyframes slideIn {
-  from {
-    opacity: 0;
-    transform: translateX(-20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
   }
 }

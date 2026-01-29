@@ -5,6 +5,9 @@ import './index.scss';
 const FreeResponse = ({
   question,
   isActive,
+  isLocked,
+  isRevising,
+  previousResponse,
   onComplete,
   trackInteraction,
   trackTyping,
@@ -30,11 +33,24 @@ const FreeResponse = ({
   
   const isValid = text.length >= minLength && text.length <= maxLength;
   
-  // Show input immediately when active (Question wrapper already handles the question text delay)
+  // Show input when active, revising, or locked
   useEffect(() => {
-    if (!isActive) return;
+    // If locked, show saved response (read-only)
+    if (isLocked) {
+      const savedText = previousResponse || '';
+      setText(savedText);
+      setCharCount(savedText.length);
+      setIsVisible(true);
+      markOptionsShownRef.current?.();
+      return;
+    }
     
-    setText('');
+    if (!isActive && !isRevising) return;
+    
+    // Use previous response if revising, otherwise start empty
+    const initialText = (isRevising && previousResponse) ? previousResponse : '';
+    setText(initialText);
+    setCharCount(initialText.length);
     setIsVisible(false);
     
     // Small delay just for smooth transition
@@ -51,7 +67,7 @@ const FreeResponse = ({
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
     };
-  }, [isActive]);
+  }, [isActive, isLocked, isRevising, previousResponse]);
   
   const handleFocus = useCallback(() => {
     setIsFocused(true);

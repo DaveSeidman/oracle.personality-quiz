@@ -6,6 +6,9 @@ const RankedChoice = ({
   question,
   presentationOrder,
   isActive,
+  isLocked,
+  isRevising,
+  previousResponse,
   onComplete,
   trackInteraction,
   trackRankMove,
@@ -17,6 +20,7 @@ const RankedChoice = ({
   const [visibleCount, setVisibleCount] = useState(0);
   const [draggedIndex, setDraggedIndex] = useState(null);
   const [dragOverIndex, setDragOverIndex] = useState(null);
+  const [dragOffset, setDragOffset] = useState(0); // Y offset for dragged item
   const [isReady, setIsReady] = useState(false);
   const timersRef = useRef([]);
   const containerRef = useRef(null);
@@ -24,31 +28,46 @@ const RankedChoice = ({
   const itemRefs = useRef([]);
   const optionsShownRef = useRef(false);
   const markOptionsShownRef = useRef(markOptionsShown);
+  const dragStartY = useRef(0);
+  const itemHeight = useRef(0);
   
-  // Keep ref updated
   markOptionsShownRef.current = markOptionsShown;
   
   const { options } = question;
   
-  // Get options in presentation order - memoized to prevent infinite loops
+  // Use previous response order if available (when revising), otherwise use presentation order
+  const initialOrder = useMemo(() => {
+    if (previousResponse && Array.isArray(previousResponse) && previousResponse.length > 0) {
+      return previousResponse;
+    }
+    return presentationOrder;
+  }, [previousResponse, presentationOrder]);
+  
   const orderedOptions = useMemo(() => 
-    presentationOrder.map(id => options.find(o => o.id === id)).filter(Boolean),
-    [presentationOrder, options]
+    initialOrder.map(id => options.find(o => o.id === id)).filter(Boolean),
+    [initialOrder, options]
   );
   
-  // Initialize items when active
   useEffect(() => {
+    if (isLocked || isRevising) {
+      setItems(orderedOptions.map((o, i) => ({ ...o, currentIndex: i })));
+      setVisibleCount(orderedOptions.length);
+      setIsReady(true);
+      markOptionsShownRef.current?.();
+      return;
+    }
+    
     if (!isActive) return;
     
     setItems(orderedOptions.map((o, i) => ({ ...o, currentIndex: i })));
-    setVisibleCount(0);
-    setIsReady(false);
-    optionsShownRef.current = false;
     
     timersRef.current.forEach(t => clearTimeout(t));
     timersRef.current = [];
     
-    // Reveal items one by one
+    setVisibleCount(0);
+    setIsReady(false);
+    optionsShownRef.current = false;
+    
     orderedOptions.forEach((_, index) => {
       const timer = setTimeout(() => {
         setVisibleCount(prev => prev + 1);
@@ -58,7 +77,6 @@ const RankedChoice = ({
           markOptionsShownRef.current?.();
         }
         
-        // Show confirm button after all items visible
         if (index === orderedOptions.length - 1) {
           setTimeout(() => setIsReady(true), 300);
         }
@@ -70,9 +88,8 @@ const RankedChoice = ({
     return () => {
       timersRef.current.forEach(t => clearTimeout(t));
     };
-  }, [isActive, orderedOptions]);
+  }, [isActive, isLocked, isRevising, orderedOptions]);
   
-  // Move item from one index to another
   const moveItem = useCallback((fromIndex, toIndex) => {
     if (fromIndex === toIndex) return;
     
@@ -94,10 +111,22 @@ const RankedChoice = ({
     });
   }, [items, trackRankMove, trackInteraction]);
   
-  // Mouse/pointer drag handlers (for desktop)
-  const handleDragStart = useCallback((e, index) => {
+  // Pointer drag handlers
+  const handlePointerDown = useCallback((e, index) => {
+    if (index >= visibleCount || isLocked) return;
+    
+    e.preventDefault();
     haptic(10);
+    
+    const rect = itemRefs.current[index]?.getBoundingClientRect();
+    if (rect) {
+      itemHeight.current = rect.height + 8; // Including gap
+      dragStartY.current = e.clientY;
+    }
+    
     setDraggedIndex(index);
+    setDragOverIndex(index);
+    setDragOffset(0);
     
     trackInteraction?.({
       type: 'drag-start',
@@ -106,113 +135,72 @@ const RankedChoice = ({
       data: { fromIndex: index },
     });
     
-    if (e.dataTransfer) {
-      e.dataTransfer.effectAllowed = 'move';
-      e.dataTransfer.setData('text/plain', items[index]?.id);
-    }
-  }, [items, trackInteraction]);
+    e.target.setPointerCapture?.(e.pointerId);
+  }, [visibleCount, isLocked, items, trackInteraction]);
   
-  const handleDragOver = useCallback((e, index) => {
-    e.preventDefault();
-    if (dragOverIndex !== index) {
-      setDragOverIndex(index);
+  const handlePointerMove = useCallback((e) => {
+    if (draggedIndex === null || !listRef.current) return;
+    
+    const offset = e.clientY - dragStartY.current;
+    setDragOffset(offset);
+    
+    // Calculate which position we're over
+    const listRect = listRef.current.getBoundingClientRect();
+    const relativeY = e.clientY - listRect.top;
+    const overIndex = Math.max(0, Math.min(items.length - 1, Math.floor(relativeY / itemHeight.current)));
+    
+    if (overIndex !== dragOverIndex) {
+      setDragOverIndex(overIndex);
+      haptic(5);
     }
-  }, [dragOverIndex]);
+  }, [draggedIndex, dragOverIndex, items.length]);
   
-  const handleDragEnd = useCallback(() => {
-    if (draggedIndex !== null && dragOverIndex !== null && draggedIndex !== dragOverIndex) {
+  const handlePointerUp = useCallback(() => {
+    const hadMove = draggedIndex !== null && dragOverIndex !== null && draggedIndex !== dragOverIndex;
+    
+    if (hadMove) {
+      // First move the item
       moveItem(draggedIndex, dragOverIndex);
     }
-    setDraggedIndex(null);
-    setDragOverIndex(null);
+    
+    // Reset drag state after CSS transition completes to prevent visual jump
+    setTimeout(() => {
+      setDraggedIndex(null);
+      setDragOverIndex(null);
+      setDragOffset(0);
+    }, hadMove ? 150 : 0);
   }, [draggedIndex, dragOverIndex, moveItem]);
   
-  const handleDrop = useCallback((e, dropIndex) => {
-    e.preventDefault();
-    if (draggedIndex !== null && draggedIndex !== dropIndex) {
-      moveItem(draggedIndex, dropIndex);
-    }
-    setDraggedIndex(null);
-    setDragOverIndex(null);
-  }, [draggedIndex, moveItem]);
-  
-  // Touch drag handlers (for mobile)
-  const handleTouchStart = useCallback((e, index) => {
-    if (index >= visibleCount) return;
-    
-    haptic(10);
-    setDraggedIndex(index);
-    
-    trackInteraction?.({
-      type: 'touch-drag-start',
-      targetId: items[index]?.id,
-      data: { fromIndex: index },
-    });
-  }, [visibleCount, items, trackInteraction]);
-  
-  // Refs to track state for non-passive touch handler (avoids stale closures)
-  const dragOverIndexRef = useRef(dragOverIndex);
-  dragOverIndexRef.current = dragOverIndex;
-  const draggedIndexRef = useRef(draggedIndex);
-  draggedIndexRef.current = draggedIndex;
-  const itemsLengthRef = useRef(items.length);
-  itemsLengthRef.current = items.length;
-  
-  // Add non-passive touch move listener to document to prevent scroll during drag
+  // Global pointer move/up for when pointer leaves element
   useEffect(() => {
-    const onTouchMove = (e) => {
-      // Only prevent default if we're actively dragging in this component
-      if (draggedIndexRef.current === null || !listRef.current) return;
-      
-      // Check if touch is within our list bounds
-      const listRect = listRef.current.getBoundingClientRect();
-      const touch = e.touches[0];
-      if (touch.clientX < listRect.left || touch.clientX > listRect.right ||
-          touch.clientY < listRect.top - 50 || touch.clientY > listRect.bottom + 50) {
-        return; // Touch is outside our component
-      }
-      
-      e.preventDefault();
-      
-      // Find which item we're over
-      const relativeY = touch.clientY - listRect.top;
-      const itemHeight = listRect.height / itemsLengthRef.current;
-      const overIndex = Math.max(0, Math.min(itemsLengthRef.current - 1, Math.floor(relativeY / itemHeight)));
-      
-      if (overIndex !== dragOverIndexRef.current) {
-        setDragOverIndex(overIndex);
-        haptic(5);
-      }
-    };
+    if (draggedIndex === null) return;
     
-    // Must use document level with { passive: false } to override browser defaults
-    document.addEventListener('touchmove', onTouchMove, { passive: false });
+    const onMove = (e) => handlePointerMove(e);
+    const onUp = () => handlePointerUp();
+    
+    document.addEventListener('pointermove', onMove);
+    document.addEventListener('pointerup', onUp);
+    document.addEventListener('pointercancel', onUp);
+    
     return () => {
-      document.removeEventListener('touchmove', onTouchMove);
+      document.removeEventListener('pointermove', onMove);
+      document.removeEventListener('pointerup', onUp);
+      document.removeEventListener('pointercancel', onUp);
     };
-  }, []);
-  
-  const handleTouchEnd = useCallback(() => {
-    if (draggedIndex !== null && dragOverIndex !== null && draggedIndex !== dragOverIndex) {
-      moveItem(draggedIndex, dragOverIndex);
-    }
-    
-    setDraggedIndex(null);
-    setDragOverIndex(null);
-  }, [draggedIndex, dragOverIndex, moveItem]);
+  }, [draggedIndex, handlePointerMove, handlePointerUp]);
   
   // Button-based reordering
   const handleMoveUp = useCallback((index) => {
-    if (index === 0) return;
+    if (index === 0 || isLocked) return;
     haptic(15);
     moveItem(index, index - 1);
-  }, [moveItem]);
+  }, [moveItem, isLocked]);
   
   const handleMoveDown = useCallback((index) => {
-    if (index === items.length - 1) return;
+    if (index === items.length - 1 || isLocked) return;
     haptic(15);
     moveItem(index, index + 1);
-  }, [items.length, moveItem]);
+  }, [items.length, moveItem, isLocked]);
   
   const handleConfirm = useCallback(() => {
     haptic(30);
@@ -223,69 +211,103 @@ const RankedChoice = ({
     onComplete?.(finalOrder);
   }, [items, setFinalRankings, onComplete]);
   
+  // Calculate transform for each item
+  const getItemStyle = useCallback((index) => {
+    if (draggedIndex === null) return {};
+    
+    if (index === draggedIndex) {
+      // Dragged item follows pointer
+      return {
+        transform: `translateY(${dragOffset}px) scale(1.02)`,
+        zIndex: 100,
+        transition: 'transform 0s, box-shadow 0.2s',
+      };
+    }
+    
+    // Other items shift to make room
+    if (dragOverIndex !== null && draggedIndex !== null) {
+      // If dragging down
+      if (draggedIndex < dragOverIndex) {
+        if (index > draggedIndex && index <= dragOverIndex) {
+          return { transform: `translateY(-${itemHeight.current}px)` };
+        }
+      }
+      // If dragging up
+      else if (draggedIndex > dragOverIndex) {
+        if (index >= dragOverIndex && index < draggedIndex) {
+          return { transform: `translateY(${itemHeight.current}px)` };
+        }
+      }
+    }
+    
+    return {};
+  }, [draggedIndex, dragOverIndex, dragOffset]);
+
   return (
     <div 
       className="ranked-choice" 
       ref={containerRef}
-      onTouchEnd={handleTouchEnd}
-      onTouchCancel={handleTouchEnd}
     >
       <p className="ranked-choice__instructions">
         Drag to reorder or use arrows to rank from most (top) to least (bottom) important
       </p>
       
       <div className="ranked-choice__list" ref={listRef}>
-        {items.map((item, index) => (
-          <div
-            key={item.id}
-            ref={el => itemRefs.current[index] = el}
-            className={`ranked-choice__item ${index < visibleCount ? 'visible' : ''} ${draggedIndex === index ? 'dragging' : ''} ${dragOverIndex === index && draggedIndex !== index ? 'drag-over' : ''}`}
-            style={{ '--index': index, opacity: index < visibleCount ? undefined : 0 }}
-            draggable={index < visibleCount}
-            onDragStart={(e) => handleDragStart(e, index)}
-            onDragOver={(e) => handleDragOver(e, index)}
-            onDragEnd={handleDragEnd}
-            onDrop={(e) => handleDrop(e, index)}
-            onTouchStart={(e) => handleTouchStart(e, index)}
-          >
-            <span className="ranked-choice__rank">
-              {index + 1}
-            </span>
-            
-            <span className="ranked-choice__text">
-              {item.text}
-            </span>
-            
-            <div className="ranked-choice__controls">
-              <button
-                className="ranked-choice__arrow"
-                disabled={index === 0}
-                onClick={() => handleMoveUp(index)}
-                aria-label="Move up"
-              >
-                ↑
-              </button>
-              <button
-                className="ranked-choice__arrow"
-                disabled={index === items.length - 1}
-                onClick={() => handleMoveDown(index)}
-                aria-label="Move down"
-              >
-                ↓
-              </button>
+        {items.map((item, index) => {
+          const isDragging = draggedIndex === index;
+          const style = getItemStyle(index);
+          
+          return (
+            <div
+              key={item.id}
+              ref={el => itemRefs.current[index] = el}
+              className={`ranked-choice__item ${index < visibleCount ? 'visible' : ''} ${isDragging ? 'dragging' : ''}`}
+              style={{ 
+                '--index': index, 
+                opacity: index < visibleCount ? undefined : 0,
+                ...style,
+              }}
+              onPointerDown={(e) => handlePointerDown(e, index)}
+            >
+              <span className="ranked-choice__rank">
+                {index + 1}
+              </span>
+              
+              <span className="ranked-choice__text">
+                {item.text}
+              </span>
+              
+              <div className="ranked-choice__controls">
+                <button
+                  className="ranked-choice__arrow"
+                  disabled={index === 0 || isLocked}
+                  onClick={(e) => { e.stopPropagation(); handleMoveUp(index); }}
+                  aria-label="Move up"
+                >
+                  ↑
+                </button>
+                <button
+                  className="ranked-choice__arrow"
+                  disabled={index === items.length - 1 || isLocked}
+                  onClick={(e) => { e.stopPropagation(); handleMoveDown(index); }}
+                  aria-label="Move down"
+                >
+                  ↓
+                </button>
+              </div>
+              
+              <span className="ranked-choice__handle">
+                ⋮⋮
+              </span>
             </div>
-            
-            <span className="ranked-choice__handle">
-              ⋮⋮
-            </span>
-          </div>
-        ))}
+          );
+        })}
       </div>
       
       <button
         className={`ranked-choice__confirm ${isReady ? 'visible' : ''}`}
         style={{ opacity: isReady ? undefined : 0 }}
-        disabled={!isReady}
+        disabled={!isReady || isLocked}
         onClick={handleConfirm}
       >
         Confirm Rankings

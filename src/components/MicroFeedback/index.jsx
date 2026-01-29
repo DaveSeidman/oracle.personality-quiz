@@ -1,78 +1,105 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import './index.scss';
 
-const MicroFeedback = ({ feedback, onComplete }) => {
-  const [log, setLog] = useState([]);
-  const logRef = useRef(null);
-  const processedRef = useRef(new Set());
+// Type-on effect component
+const TypeOnText = ({ text, delay = 0, speed = 25, onComplete }) => {
+  const [displayedText, setDisplayedText] = useState('');
+  const [isComplete, setIsComplete] = useState(false);
   
-  // Add new feedback to log
   useEffect(() => {
-    if (!feedback || feedback.length === 0) return;
+    if (!text) return;
     
-    // Create a unique key for this feedback batch
-    const feedbackKey = JSON.stringify(feedback);
+    setDisplayedText('');
+    setIsComplete(false);
     
-    // Skip if we've already processed this exact feedback
-    if (processedRef.current.has(feedbackKey)) return;
-    processedRef.current.add(feedbackKey);
+    let currentIndex = 0;
+    let timeoutId;
     
-    const timestamp = new Date().toLocaleTimeString('en-US', { 
-      hour12: false, 
-      hour: '2-digit', 
-      minute: '2-digit', 
-      second: '2-digit' 
-    });
+    const startTyping = () => {
+      const typeNextChar = () => {
+        if (currentIndex < text.length) {
+          setDisplayedText(text.slice(0, currentIndex + 1));
+          currentIndex++;
+          timeoutId = setTimeout(typeNextChar, speed);
+        } else {
+          setIsComplete(true);
+          onComplete?.();
+        }
+      };
+      typeNextChar();
+    };
     
-    // Add each feedback item to the log
-    const newEntries = feedback.map((item, idx) => ({
-      id: `${Date.now()}-${idx}`,
-      timestamp,
-      text: item.text,
-      type: item.type || 'info',
-      impact: item.impact || 'neutral',
-    }));
+    const delayTimeout = setTimeout(startTyping, delay);
     
-    setLog(prev => [...prev, ...newEntries]);
-    
-    // Call onComplete after a short delay
-    const timer = setTimeout(() => {
-      onComplete?.();
-    }, 100);
-    
-    return () => clearTimeout(timer);
-  }, [feedback, onComplete]);
-  
-  // Auto-scroll to bottom when new entries added
-  useEffect(() => {
-    if (logRef.current) {
-      logRef.current.scrollTop = logRef.current.scrollHeight;
-    }
-  }, [log]);
-  
-  // Don't render if no log entries
-  if (log.length === 0) return null;
+    return () => {
+      clearTimeout(delayTimeout);
+      clearTimeout(timeoutId);
+    };
+  }, [text, delay, speed, onComplete]);
   
   return (
-    <div className="micro-feedback-terminal">
-      <div className="micro-feedback-terminal__header">
-        <span className="micro-feedback-terminal__dot micro-feedback-terminal__dot--red" />
-        <span className="micro-feedback-terminal__dot micro-feedback-terminal__dot--yellow" />
-        <span className="micro-feedback-terminal__dot micro-feedback-terminal__dot--green" />
-        <span className="micro-feedback-terminal__title">behavioral_analysis.log</span>
-      </div>
-      <div className="micro-feedback-terminal__body" ref={logRef}>
-        {log.map((entry) => (
-          <div 
-            key={entry.id} 
-            className={`micro-feedback-terminal__entry micro-feedback-terminal__entry--${entry.impact}`}
-          >
-            <span className="micro-feedback-terminal__timestamp">[{entry.timestamp}]</span>
-            <span className="micro-feedback-terminal__text">{entry.text}</span>
-          </div>
-        ))}
-        <div className="micro-feedback-terminal__cursor">_</div>
-      </div>
+    <span className={`type-on-text ${isComplete ? 'complete' : ''}`}>
+      {displayedText}
+      {!isComplete && displayedText.length > 0 && <span className="type-on-text__cursor">|</span>}
+    </span>
+  );
+};
+
+const MicroFeedback = ({ feedback, isVisible = true }) => {
+  const containerRef = useRef(null);
+  
+  // Generate random positions for each feedback item - memoized per feedback content
+  const positions = useMemo(() => {
+    if (!feedback || feedback.length === 0) return [];
+    
+    // Define safe zones spread across the viewport
+    const zones = [
+      // Top left
+      { xMin: 5, xMax: 30, yMin: 15, yMax: 30 },
+      // Top right  
+      { xMin: 70, xMax: 95, yMin: 15, yMax: 30 },
+      // Middle left
+      { xMin: 5, xMax: 25, yMin: 40, yMax: 55 },
+      // Middle right
+      { xMin: 75, xMax: 95, yMin: 40, yMax: 55 },
+      // Bottom left
+      { xMin: 5, xMax: 30, yMin: 65, yMax: 80 },
+      // Bottom right
+      { xMin: 70, xMax: 95, yMin: 65, yMax: 80 },
+    ];
+    
+    // Shuffle zones
+    const shuffledZones = [...zones].sort(() => Math.random() - 0.5);
+    
+    return feedback.map((_, index) => {
+      const zone = shuffledZones[index % shuffledZones.length];
+      return {
+        left: `${zone.xMin + Math.random() * (zone.xMax - zone.xMin)}%`,
+        top: `${zone.yMin + Math.random() * (zone.yMax - zone.yMin)}%`,
+      };
+    });
+  }, [feedback]);
+  
+  if (!feedback || feedback.length === 0 || !isVisible) return null;
+  
+  return (
+    <div className="micro-feedback" ref={containerRef}>
+      {feedback.map((item, index) => (
+        <div
+          key={`${index}-${item.text?.slice(0, 20)}`}
+          className="micro-feedback__item"
+          style={{
+            left: positions[index]?.left,
+            top: positions[index]?.top,
+          }}
+        >
+          <TypeOnText
+            text={item.text}
+            delay={index * 500} // Stagger each message by 500ms
+            speed={20}
+          />
+        </div>
+      ))}
     </div>
   );
 };

@@ -6,15 +6,24 @@ const StatementSlider = ({
   statement,
   isVisible,
   index,
+  initialValue,
   trackInteraction,
   trackSliderChange,
   onChange,
 }) => {
   const { id, text, min = 0, max = 10, step = 1, labels = {} } = statement;
-  const [value, setValue] = useState(Math.round((max - min) / 2) + min);
+  const defaultValue = initialValue !== undefined ? initialValue : Math.round((max - min) / 2) + min;
+  const [value, setValue] = useState(defaultValue);
   const [isDragging, setIsDragging] = useState(false);
   const sliderRef = useRef(null);
   const startValueRef = useRef(value);
+  
+  // Update value when initialValue changes (for revision)
+  useEffect(() => {
+    if (initialValue !== undefined) {
+      setValue(initialValue);
+    }
+  }, [initialValue]);
   
   // Generate tick marks
   const ticks = [];
@@ -92,18 +101,18 @@ const StatementSlider = ({
               className="statement-slider__fill"
               style={{ width: `${fillPercent}%` }}
             />
-            
-            {step && (
-              <div className="statement-slider__ticks">
-                {ticks.map(tick => (
-                  <div 
-                    key={tick}
-                    className={`statement-slider__tick ${tick === value ? 'active' : ''}`}
-                    style={{ left: `${((tick - min) / (max - min)) * 100}%` }}
-                  />
-                ))}
-              </div>
-            )}
+            {/* Tick marks */}
+            {step && ticks.map(tick => (
+              <div 
+                key={tick}
+                className={`statement-slider__tick ${tick === value ? 'active' : ''}`}
+                style={{ left: `${((tick - min) / (max - min)) * 100}%` }}
+              />
+            ))}
+            <div 
+              className="statement-slider__thumb"
+              style={{ left: `${fillPercent}%` }}
+            />
           </div>
           
           <input
@@ -140,6 +149,9 @@ const RangeSlider = ({
   question,
   presentationOrder,
   isActive,
+  isLocked,
+  isRevising,
+  previousResponse,
   onComplete,
   trackInteraction,
   trackSliderChange,
@@ -158,10 +170,30 @@ const RangeSlider = ({
   
   const { statements = [] } = question;
   
-  // Reveal statements with timing (no questionDelay since Question wrapper handles that)
+  // Reveal statements with timing
   useEffect(() => {
+    // If locked or revising, show all immediately with saved values
+    if (isLocked || isRevising) {
+      setVisibleCount(statements.length);
+      setIsReady(true);
+      
+      // Use previousResponse for both locked (current answer) and revising (original answer)
+      const initialValues = {};
+      statements.forEach(stmt => {
+        if (previousResponse && previousResponse[stmt.id] !== undefined) {
+          initialValues[stmt.id] = previousResponse[stmt.id];
+        } else {
+          initialValues[stmt.id] = Math.round(((stmt.max || 10) - (stmt.min || 0)) / 2) + (stmt.min || 0);
+        }
+      });
+      setValues(initialValues);
+      markOptionsShownRef.current?.();
+      return;
+    }
+    
     if (!isActive) return;
     
+    // Fresh start - reset everything
     setVisibleCount(0);
     setIsReady(false);
     setValues({});
@@ -177,7 +209,7 @@ const RangeSlider = ({
         // Initialize with middle value
         setValues(prev => ({
           ...prev,
-          [stmt.id]: Math.round((stmt.max - stmt.min) / 2) + stmt.min,
+          [stmt.id]: Math.round(((stmt.max || 10) - (stmt.min || 0)) / 2) + (stmt.min || 0),
         }));
         
         if (!optionsShownRef.current) {
@@ -196,7 +228,7 @@ const RangeSlider = ({
     return () => {
       timersRef.current.forEach(t => clearTimeout(t));
     };
-  }, [isActive, statements]);
+  }, [isActive, isLocked, isRevising, statements, previousResponse]);
   
   const handleValueChange = useCallback((statementId, value) => {
     setValues(prev => ({ ...prev, [statementId]: value }));
@@ -216,6 +248,7 @@ const RangeSlider = ({
             statement={statement}
             index={index}
             isVisible={index < visibleCount}
+            initialValue={values[statement.id]}
             trackInteraction={trackInteraction}
             trackSliderChange={trackSliderChange}
             onChange={handleValueChange}

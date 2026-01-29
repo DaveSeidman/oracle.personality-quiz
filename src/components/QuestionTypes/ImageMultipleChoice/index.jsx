@@ -6,6 +6,9 @@ const ImageMultipleChoice = ({
   question,
   presentationOrder,
   isActive,
+  isLocked,
+  isRevising,
+  previousResponse,
   onComplete,
   trackInteraction,
   trackSelection,
@@ -15,7 +18,7 @@ const ImageMultipleChoice = ({
   const [visibleOptions, setVisibleOptions] = useState([]);
   const [selectedIds, setSelectedIds] = useState([]);
   const [imagesLoaded, setImagesLoaded] = useState({});
-  const [pressedId, setPressedId] = useState(null); // Track which button is pressed
+  const [pressedId, setPressedId] = useState(null);
   const timersRef = useRef([]);
   const optionsShownRef = useRef(false);
   const markOptionsShownRef = useRef(markOptionsShown);
@@ -32,13 +35,40 @@ const ImageMultipleChoice = ({
     [presentationOrder, options]
   );
   
-  // Reveal options with timing (no questionDelay since Question wrapper already handles that)
+  // Determine grid class based on option count
+  const gridClass = useMemo(() => {
+    const count = orderedOptions.length;
+    if (count === 2) return 'grid-2';
+    if (count === 3) return 'grid-3';
+    if (count === 4) return 'grid-4';
+    if (count === 5) return 'grid-5';
+    if (count === 6) return 'grid-6';
+    return 'grid-default';
+  }, [orderedOptions.length]);
+  
+  // Reveal options with timing
   useEffect(() => {
+    // If locked or revising, show all immediately (no animation)
+    if (isLocked || isRevising) {
+      setVisibleOptions(orderedOptions.map(o => o.id));
+      // Set selection from previousResponse (works for both locked and revising)
+      if (previousResponse) {
+        const prevSelected = Array.isArray(previousResponse) ? previousResponse : [previousResponse];
+        setSelectedIds(prevSelected);
+      }
+      markOptionsShownRef.current?.();
+      return;
+    }
+    
     if (!isActive) return;
     
+    // Clear existing timers
     timersRef.current.forEach(t => clearTimeout(t));
     timersRef.current = [];
+    
+    // Animate in
     setVisibleOptions([]);
+    setSelectedIds([]);
     optionsShownRef.current = false;
     
     orderedOptions.forEach((option, index) => {
@@ -59,7 +89,7 @@ const ImageMultipleChoice = ({
     return () => {
       timersRef.current.forEach(t => clearTimeout(t));
     };
-  }, [isActive, orderedOptions]);
+  }, [isActive, isLocked, isRevising, orderedOptions, previousResponse]);
   
   // Track which option is currently pressed (for detecting drag-away)
   const pressedOptionRef = useRef(null);
@@ -182,13 +212,13 @@ const ImageMultipleChoice = ({
   
   return (
     <div className="image-multiple-choice">
-      <div className="image-multiple-choice__grid">
+      <div className={`image-multiple-choice__grid image-multiple-choice__grid--${gridClass}`}>
         {orderedOptions.map((option, index) => (
           <button
             key={option.id}
             className={`image-multiple-choice__option ${isVisible(option.id) ? 'visible' : ''} ${isSelected(option.id) ? 'selected' : ''} ${pressedId === option.id ? 'pressed' : ''}`}
             style={{ '--index': index, opacity: isVisible(option.id) ? undefined : 0 }}
-            disabled={!isVisible(option.id) || (!canSelectMore && !isSelected(option.id) && selection === 'multiple')}
+            disabled={!isVisible(option.id) || (!canSelectMore && !isSelected(option.id) && selection === 'multiple') || isLocked}
             onPointerEnter={(e) => handlePointerEnter(e, option.id)}
             onPointerDown={(e) => handlePointerDown(e, option.id)}
             onPointerLeave={(e) => handlePointerLeave(e, option.id)}

@@ -1,63 +1,45 @@
-// App base styles
+// App styles
 .app {
-  position: relative;
-  min-height: 100vh;
-  min-height: 100dvh;
-  background: #0a0a1a;
-  overflow-x: hidden;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  
-  // Touch action for better mobile handling
-  touch-action: pan-y;
-  
-  // Prevent text selection during quiz
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background: #1a1a2e;
+  overflow: hidden;
+  touch-action: none;
   user-select: none;
-  -webkit-user-select: none;
-  
-  // Prevent iOS callouts (long-press menus)
-  -webkit-touch-callout: none;
-  
-  // Prevent tap highlight on buttons
-  -webkit-tap-highlight-color: transparent;
+  font-family: system-ui, -apple-system, sans-serif;
 }
 
 .app__background {
   position: fixed;
   inset: 0;
+  width: 100%;
+  height: 100%;
   z-index: 0;
-  transition: opacity 0.8s ease;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f1626 100%);
   
-  &.muted {
-    opacity: 0.3;
-  }
-  
-  video {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
-  
-  &-fallback {
+  &::after {
+    content: '';
     position: absolute;
     inset: 0;
-    background: radial-gradient(ellipse at 30% 20%, rgba(79, 172, 254, 0.15) 0%, transparent 50%),
-                radial-gradient(ellipse at 70% 80%, rgba(0, 242, 254, 0.1) 0%, transparent 50%),
-                linear-gradient(180deg, #0a0a1a 0%, #1a1a3e 50%, #0a0a1a 100%);
+    background: radial-gradient(ellipse at 50% 0%, rgba(74, 158, 255, 0.08) 0%, transparent 60%);
+    pointer-events: none;
   }
+  
+  &.muted { opacity: 0.5; }
+  &-fallback { display: none; }
 }
 
 .app__questions {
-  position: relative;
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   z-index: 10;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.5s ease;
-  
-  // Allow natural document scroll - questions stack vertically
-  // Hidden questions have height: 0, so user can only scroll to answered ones
+  transition: opacity 0.4s ease;
   
   &.visible {
     opacity: 1;
@@ -65,160 +47,26 @@
   }
 }
 
-.app__logo {
-  position: fixed;
-  top: 2rem;
-  left: 2rem;
-  width: 80px;
-  height: auto;
-  z-index: 100;
-  opacity: 0.8;
-  transition: opacity 0.3s ease;
-  
-  @media (max-width: 768px) {
-    width: 60px;
-    top: 1rem;
-    left: 1rem;
-  }
-}
-
-.app__loading {
-  position: fixed;
-  inset: 0;
-  z-index: 50;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 1.5rem;
-  background: rgba(10, 10, 26, 0.95);
-  animation: fadeIn 0.3s ease;
-  
-  p {
-    color: rgba(255, 255, 255, 0.8);
-    font-size: 1.1rem;
-    letter-spacing: 0.05em;
-  }
-  
-  &-spinner {
-    width: 40px;
-    height: 40px;
-    border: 3px solid rgba(255, 255, 255, 0.1);
-    border-top-color: rgba(79, 172, 254, 0.8);
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-  }
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-// Global reset and base styles
-*, *::before, *::after {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
-
-html {
-  scroll-behavior: smooth;
-  // Base font size - adjust this single value to scale entire UI
-  // Default browser is 16px, doubled for large tablet (2960x1848)
-  font-size: var(--base-font-size, 32px);
-}
-
-:root {
-  --base-font-size: 32px;
-}
-
-body {
-  margin: 0;
-  background: #0a0a1a;
-  color: white;
-}
-
-button {
-  font-family: inherit;
-  cursor: pointer;
-  -webkit-touch-callout: none;
-  -webkit-tap-highlight-color: transparent;
-  touch-action: manipulation; // Faster clicks, no double-tap zoom
-  
-  &:focus {
-    outline: 2px solid rgba(79, 172, 254, 0.5);
-    outline-offset: 2px;
-  }
-  
-  &:focus:not(:focus-visible) {
-    outline: none;
-  }
-}
-
-// Scrollbar styling
-::-webkit-scrollbar {
-  width: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.05);
-}
-
-::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 4px;
-}
-
-// Utility animations
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-@keyframes slideInFromBottom {
-  from {
-    opacity: 0;
-    transform: translateY(30px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes scaleIn {
-  from {
-    opacity: 0;
-    transform: scale(0.9);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-// Focus visible polyfill
-.js-focus-visible :focus:not(.focus-visible) {
-  outline: none;
-}
+// Global resets
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: var(--base-font-size, 32px); }
+:root { --base-font-size: 32px; }
+body { margin: 0; background: #1a1a2e; color: white; overflow: hidden; }
+button { font-family: inherit; cursor: pointer; }
+::-webkit-scrollbar { display: none; }
 
 // Confirmation Screen
 .app__confirm {
   position: fixed;
   inset: 0;
+  width: 100%;
+  height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(10, 10, 26, 0.95);
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
   z-index: 30;
   padding: 2rem;
-  animation: fadeIn 0.5s ease;
 }
 
 .app__confirm-content {
@@ -226,81 +74,55 @@ button {
   flex-direction: column;
   align-items: center;
   gap: 1.5rem;
-  max-width: 50rem;
   text-align: center;
+  max-width: 28rem;
 }
 
 .app__confirm-title {
+  font-size: 1.5rem;
+  font-weight: 600;
   color: white;
-  font-size: 2rem;
-  font-weight: 700;
-  margin: 0;
-  animation: fadeInUp 0.5s ease backwards;
-  animation-delay: 0.1s;
 }
 
 .app__confirm-subtitle {
-  color: rgba(255, 255, 255, 0.7);
-  font-size: 1.1rem;
-  line-height: 1.6;
-  margin: 0;
-  animation: fadeInUp 0.5s ease backwards;
-  animation-delay: 0.2s;
+  color: rgba(255,255,255,0.6);
+  font-size: 0.9rem;
+  line-height: 1.5;
 }
 
 .app__confirm-actions {
   display: flex;
-  gap: 1.5rem;
+  gap: 1rem;
   margin-top: 1rem;
-  animation: fadeInUp 0.5s ease backwards;
-  animation-delay: 0.3s;
-  
-  @media (max-width: 500px) {
-    flex-direction: column;
-    width: 100%;
-  }
+}
+
+.app__confirm-back,
+.app__confirm-start {
+  padding: 1rem 2rem;
+  border-radius: 0.5rem;
+  font-size: 1rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
 }
 
 .app__confirm-back {
-  padding: 1rem 2rem;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 12px;
-  color: rgba(255, 255, 255, 0.8);
-  font-size: 1.1rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background 0.2s ease, border-color 0.2s ease;
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.25);
+  color: rgba(255,255,255,0.8);
   
   &:active {
-    background: rgba(255, 255, 255, 0.2);
-    border-color: rgba(255, 255, 255, 0.4);
+    background: rgba(255,255,255,0.1);
   }
 }
 
 .app__confirm-start {
-  padding: 1.25rem 3rem;
-  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  background: linear-gradient(135deg, #4a9eff 0%, #3d7dd8 100%);
   border: none;
-  border-radius: 12px;
   color: white;
-  font-size: 1.25rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 0 4px 15px rgba(74, 158, 255, 0.3);
   
   &:active {
     transform: scale(0.98);
-  }
-}
-
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
+    box-shadow: 0 2px 10px rgba(74, 158, 255, 0.2);
   }
 }

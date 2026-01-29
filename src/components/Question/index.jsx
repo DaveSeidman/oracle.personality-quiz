@@ -27,12 +27,16 @@ const Question = ({
   isAnswered,
   isLocked,
   isRevising,
+  previousResponse,
   shouldHide,
+  isDisabled,
+  showingFeedback,
   runId,
   analytics,
   onAnswer,
   onBack,
   onChangeAnswer,
+  onKeepAnswer,
   onInteraction,
   onMarkOptionsShown,
   typeSpeed = 50,
@@ -170,18 +174,20 @@ const Question = ({
     visibilityClass = 'answered';
   }
   
-  // Additional class for locked state
+  // Additional classes
   const lockedClass = isLocked ? 'question--locked' : '';
+  const feedbackClass = showingFeedback ? 'question--showing-feedback' : '';
   
   return (
     <div 
       ref={containerRef}
-      className={`question question--${visibilityClass} ${lockedClass}`}
+      className={`question question--${visibilityClass} ${lockedClass} ${feedbackClass}`}
       data-question-id={question.id}
       data-question-index={questionIndex}
     >
       {/* Back Button - shows on active questions (after options load) or locked questions (immediately) */}
-      {canGoBack && (showOptions || isLocked) && (
+      {/* Hide during feedback display */}
+      {canGoBack && (showOptions || isLocked) && !showingFeedback && (
         <button 
           className="question__back"
           onClick={handleBack}
@@ -206,13 +212,15 @@ const Question = ({
       </h1>
       
       {/* Question Component (options, slider, etc.) */}
-      <div className={`question__content ${showOptions || isAnswered || isLocked ? 'visible' : ''} ${isLocked ? 'locked' : ''}`}>
+      <div className={`question__content ${showOptions || isAnswered || isLocked || showingFeedback ? 'visible' : ''} ${isLocked || showingFeedback ? 'locked' : ''}`}>
         <QuestionComponent
           key={`${runId}-${question.id}${isRevising ? '-revising' : ''}`}
           question={question}
           presentationOrder={presentationOrder}
-          isActive={(isActive && showOptions && !isLocked) || isRevising}
-          isLocked={isLocked}
+          isActive={(isActive && showOptions && !isLocked && !showingFeedback) || isRevising}
+          isLocked={isLocked || showingFeedback}
+          isRevising={isRevising}
+          previousResponse={previousResponse}
           onComplete={handleComplete}
           trackInteraction={handleTrackInteraction}
           trackSelection={handleTrackSelection}
@@ -225,14 +233,22 @@ const Question = ({
           answerSpeed={answerSpeed}
         />
         
-        {/* Change Answer Button - shows when viewing a locked question */}
-        {showChangeAnswerButton && (
-          <button 
-            className="question__change-answer"
-            onClick={onChangeAnswer}
-          >
-            Change Answer
-          </button>
+        {/* Change Answer Button - shows when viewing a locked question (not during feedback) */}
+        {showChangeAnswerButton && !showingFeedback && (
+          <div className="question__answer-actions">
+            <button 
+              className="question__change-answer"
+              onClick={onChangeAnswer}
+            >
+              Change Answer
+            </button>
+            <button 
+              className="question__keep-answer"
+              onClick={onKeepAnswer}
+            >
+              Keep Answer
+            </button>
+          </div>
         )}
       </div>
     </div>

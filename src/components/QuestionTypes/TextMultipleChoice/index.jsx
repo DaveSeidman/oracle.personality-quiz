@@ -6,6 +6,9 @@ const TextMultipleChoice = ({
   question,
   presentationOrder,
   isActive,
+  isLocked,
+  isRevising,
+  previousResponse,
   onComplete,
   trackInteraction,
   trackSelection,
@@ -15,7 +18,7 @@ const TextMultipleChoice = ({
 }) => {
   const [visibleOptions, setVisibleOptions] = useState([]);
   const [selectedIds, setSelectedIds] = useState([]);
-  const [pressedId, setPressedId] = useState(null); // Track which button is pressed
+  const [pressedId, setPressedId] = useState(null);
   const timersRef = useRef([]);
   const optionsShownRef = useRef(false);
   const markOptionsShownRef = useRef(markOptionsShown);
@@ -32,24 +35,37 @@ const TextMultipleChoice = ({
     [presentationOrder, options]
   );
   
-  // Reveal options with timing (no questionDelay since Question wrapper already handles that)
+  // Reveal options with timing
   useEffect(() => {
+    // If locked or revising, show all immediately (no animation)
+    if (isLocked || isRevising) {
+      setVisibleOptions(orderedOptions.map(o => o.id));
+      // Set selection from previousResponse (works for both locked and revising)
+      if (previousResponse) {
+        const prevSelected = Array.isArray(previousResponse) ? previousResponse : [previousResponse];
+        setSelectedIds(prevSelected);
+      }
+      markOptionsShownRef.current?.();
+      return;
+    }
+    
     if (!isActive) return;
     
     // Clear any existing timers
     timersRef.current.forEach(t => clearTimeout(t));
     timersRef.current = [];
+    
+    // Animate in
     setVisibleOptions([]);
+    setSelectedIds([]);
     optionsShownRef.current = false;
     
     orderedOptions.forEach((option, index) => {
-      // Just stagger the options, no need to wait for question text again
       const startDelay = index * 100;
       
       const timer = setTimeout(() => {
         setVisibleOptions(prev => [...prev, option.id]);
         
-        // Mark options shown when first option appears
         if (!optionsShownRef.current) {
           optionsShownRef.current = true;
           markOptionsShownRef.current?.();
@@ -62,7 +78,7 @@ const TextMultipleChoice = ({
     return () => {
       timersRef.current.forEach(t => clearTimeout(t));
     };
-  }, [isActive, orderedOptions]);
+  }, [isActive, isLocked, isRevising, orderedOptions, previousResponse]);
   
   // Track which option is currently pressed (for detecting drag-away)
   const pressedOptionRef = useRef(null);
@@ -198,7 +214,7 @@ const TextMultipleChoice = ({
             key={option.id}
             className={`text-multiple-choice__option ${isVisible(option.id) ? 'visible' : ''} ${isSelected(option.id) ? 'selected' : ''} ${pressedId === option.id ? 'pressed' : ''}`}
             style={{ '--index': index, opacity: isVisible(option.id) ? undefined : 0 }}
-            disabled={!isVisible(option.id) || (!canSelectMore && !isSelected(option.id) && selection === 'multiple')}
+            disabled={!isVisible(option.id) || (!canSelectMore && !isSelected(option.id) && selection === 'multiple') || isLocked}
             onPointerEnter={(e) => handlePointerEnter(e, option.id)}
             onPointerDown={(e) => handlePointerDown(e, option.id)}
             onPointerLeave={(e) => handlePointerLeave(e, option.id)}
